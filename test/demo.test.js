@@ -14,7 +14,15 @@ test('demoAgents returns a stable set of well-formed records', () => {
     assert.equal(typeof a.cpu, 'number');
     assert.ok(a.cpu >= 0);
     assert.ok('state' in a && 'rawState' in a && 'idleSec' in a);
+    assert.ok(a.agent === 'claude' || a.agent === 'codex');
   }
+});
+
+test('demoAgents includes both claude and codex agents', () => {
+  const agents = demoAgents(1_700_000_000_000);
+  const kinds = new Set(agents.map((a) => a.agent));
+  assert.ok(kinds.has('claude'));
+  assert.ok(kinds.has('codex'));
 });
 
 test('demoAgents is deterministic for a fixed timestamp', () => {

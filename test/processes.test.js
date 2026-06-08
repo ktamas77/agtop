@@ -2,37 +2,25 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { isClaudeCli, listClaudeProcesses } = require('../lib/processes');
+const { listAllProcesses, exeBase } = require('../lib/processes');
 
-test('isClaudeCli matches the CLI invocation forms', () => {
-  assert.equal(isClaudeCli('claude'), true);
-  assert.equal(isClaudeCli('claude -c'), true);
-  assert.equal(isClaudeCli('claude --resume foo'), true);
-  assert.equal(isClaudeCli('/opt/homebrew/bin/claude'), true);
-  assert.equal(isClaudeCli('/usr/local/bin/claude --dangerously-skip-permissions'), true);
-  assert.equal(isClaudeCli('node /usr/lib/node_modules/@anthropic-ai/claude-code/cli.js'), true);
+test('exeBase returns the executable basename', () => {
+  assert.equal(exeBase('claude -c'), 'claude');
+  assert.equal(exeBase('/opt/homebrew/bin/codex exec'), 'codex');
+  assert.equal(exeBase('node /path/cli.js'), 'node');
+  assert.equal(exeBase(''), '');
 });
 
-test('isClaudeCli rejects the desktop app, helpers, and unrelated processes', () => {
-  assert.equal(isClaudeCli('/Applications/Claude.app/Contents/MacOS/Claude'), false);
-  assert.equal(isClaudeCli('/Applications/Claude.app/Contents/Frameworks/Claude Helper'), false);
-  assert.equal(isClaudeCli('vim claude.txt'), false);
-  assert.equal(isClaudeCli('node server.js'), false);
-  assert.equal(isClaudeCli('grep claude foo.log'), false);
-  assert.equal(isClaudeCli(''), false);
-  assert.equal(isClaudeCli(null), false);
-});
-
-test('listClaudeProcesses returns well-formed records (or empty)', () => {
-  const procs = listClaudeProcesses();
+test('listAllProcesses returns well-formed records', () => {
+  const procs = listAllProcesses();
   assert.ok(Array.isArray(procs));
-  for (const p of procs) {
+  assert.ok(procs.length > 0, 'expected at least one running process');
+  for (const p of procs.slice(0, 50)) {
     assert.equal(typeof p.pid, 'number');
     assert.ok(Number.isInteger(p.pid) && p.pid > 0);
     assert.equal(typeof p.cpu, 'number');
     assert.equal(typeof p.rssKb, 'number');
     assert.equal(typeof p.uptimeSec, 'number');
     assert.equal(typeof p.args, 'string');
-    assert.ok(isClaudeCli(p.args), `expected a claude CLI: ${p.args}`);
   }
 });

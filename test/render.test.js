@@ -9,6 +9,7 @@ c.setEnabled(false);
 
 const sample = (over = {}) => ({
   pid: 42,
+  agent: 'claude',
   cpu: 3.2,
   rssKb: 540000,
   uptimeSec: 419,
@@ -69,10 +70,17 @@ test('sortAgents treats missing idle as last', () => {
 test('buildFrame includes title, headers, and the agent row', () => {
   const frame = buildFrame([sample()], opts());
   assert.match(frame, /agentop/);
+  assert.match(frame, /AGENT/);
   assert.match(frame, /PROJECT/);
-  assert.match(frame, /agentop/);
+  assert.match(frame, /claude/);
   assert.match(frame, /1 agent running/);
   assert.match(frame, /Bash/);
+});
+
+test('buildFrame shows the codex agent and its model', () => {
+  const frame = buildFrame([sample({ agent: 'codex', model: 'gpt-5.5', project: 'web' })], opts());
+  assert.match(frame, /codex/);
+  assert.match(frame, /gpt-5\.5/);
 });
 
 test('buildFrame pluralizes the agent count', () => {
@@ -82,7 +90,7 @@ test('buildFrame pluralizes the agent count', () => {
 
 test('buildFrame shows an empty-state message with zero agents', () => {
   const frame = buildFrame([], opts());
-  assert.match(frame, /No running Claude agents/);
+  assert.match(frame, /No running agents/);
 });
 
 test('buildFrame every line fits within the terminal width (incl. header/empty)', () => {
