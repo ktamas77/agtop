@@ -5,6 +5,7 @@
   "tasks": {
     "start": "deno run -A main.ts",
     "demo": "deno run -A main.ts --demo",
+    "compile": "deno run -A scripts/compile.ts",
     "test": "deno test -A",
     "check": "deno fmt --check && deno lint && deno check main.ts && deno test -A"
   },

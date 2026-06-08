@@ -48,6 +48,7 @@
     "build": "tsc",
     "start": "deno run -A main.ts",
     "demo": "deno run -A main.ts --demo",
+    "compile": "deno task compile",
     "fmt": "deno fmt",
     "lint": "deno lint",
     "typecheck": "deno check main.ts",
