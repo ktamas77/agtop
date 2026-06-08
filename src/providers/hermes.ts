@@ -171,10 +171,21 @@ export function querySessions(db = dbPath()): Rec[] {
 }
 
 export function collect(procs: Proc[]): PartialAgent[] {
-  const sessions = querySessions().map(summarizeRow);
+  // Hermes sessions carry no working-directory column (see querySessions), so
+  // unlike the sibling providers — which correlate sessions to processes by cwd
+  // (opencode: `row.cwd === p.cwd`; pi: per-cwd matching) — we cannot tell which
+  // session belongs to which process. Assigning positionally would fabricate
+  // plausible-but-wrong model/sessionId/lastPrompt/rawState across concurrent
+  // processes, so we only enrich the unambiguous single-process case with the
+  // most recent session and otherwise report no-session.
+  let session: HermesSummary | null = null;
+  if (procs.length === 1) {
+    const rows = querySessions();
+    session = rows.length ? summarizeRow(rows[0]) : null;
+  }
   const out: PartialAgent[] = [];
   for (const p of procs) {
-    const s = sessions.shift();
+    const s = session;
     out.push({
       agent: name,
       pid: p.pid,

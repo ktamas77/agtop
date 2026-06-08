@@ -137,3 +137,55 @@ Deno.test('hermes.collect degrades when state.db is missing', () =>
     assert.equal(rows[0].sessionId, null);
     assert.equal(rows[0].project, 'repo');
   }));
+
+Deno.test('hermes.collect does not mis-attribute sessions across concurrent processes', {
+  ignore: !hasSqlite(),
+}, () =>
+  withHome((root) => {
+    const db = hermes.dbPath({});
+    fs.mkdirSync(path.dirname(db), { recursive: true });
+    sqlite(
+      db,
+      `
+      CREATE TABLE sessions (
+        id TEXT PRIMARY KEY,
+        source TEXT NOT NULL,
+        model TEXT,
+        title TEXT,
+        started_at REAL NOT NULL,
+        ended_at REAL
+      );
+      CREATE TABLE messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT NOT NULL,
+        role TEXT NOT NULL,
+        content TEXT,
+        tool_calls TEXT,
+        tool_name TEXT,
+        timestamp REAL NOT NULL,
+        reasoning TEXT
+      );
+      INSERT INTO sessions (id, source, model, title, started_at)
+        VALUES ('hermes-1', 'cli', 'nous/hermes-4', 'Fix auth', 1780912800.0);
+      INSERT INTO sessions (id, source, model, title, started_at)
+        VALUES ('hermes-2', 'cli', 'nous/hermes-4', 'Other', 1780912900.0);
+      INSERT INTO messages (session_id, role, content, timestamp)
+        VALUES ('hermes-1', 'user', 'inspect auth', 1780912801.0);
+      INSERT INTO messages (session_id, role, content, timestamp)
+        VALUES ('hermes-2', 'user', 'other work', 1780912901.0);
+      `,
+    );
+    // Sessions are not tagged with a cwd, so two concurrent processes cannot be
+    // reliably correlated — both must report no-session rather than guess.
+    const rows = hermes.collect([
+      proc('hermes chat', path.join(root, 'repo-a')),
+      proc('hermes chat', path.join(root, 'repo-b')),
+    ]);
+    assert.equal(rows.length, 2);
+    for (const row of rows) {
+      assert.equal(row.rawState, 'no-session');
+      assert.equal(row.sessionId, null);
+      assert.equal(row.model, null);
+      assert.equal(row.lastPrompt, null);
+    }
+  }));
