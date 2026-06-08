@@ -4,6 +4,27 @@ All notable changes to **agentop** are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.5] — 2026-06-08
+
+### Added
+
+- **Three new providers** — **Pi** (Earendil), **Hermes Agent**, and **OpenCode**,
+  bringing the dashboard to 8 coding-agent frameworks. Each reads only local
+  session state and degrades gracefully (`no-session`) when none is found. Hermes
+  enriches only the unambiguous single-process case, since its `sessions` table
+  has no working-directory column to correlate on.
+- **Shared provider infrastructure** — capability metadata
+  (`src/provider-capabilities.ts`), terminal-text sanitization + env/shim helpers
+  (`src/provider-utils.ts`), and a read-only `sqlite3` helper (`src/sqlite.ts`)
+  that all SQLite-backed providers (Codex, Hermes, OpenCode) route through.
+- **Standalone compiled binaries** — `deno compile` builds dependency-free
+  executables for Linux and macOS (x86_64 + arm64), attached to each GitHub
+  Release by a new `build-binaries.yml` workflow (additive — it never blocks the
+  npm/JSR publish).
+- **One-line installer** — `curl -fsSL …/install.sh | sh` detects OS/arch,
+  downloads the matching binary from the latest release, verifies its SHA-256
+  checksum, and installs it to your `PATH`.
+
 ## [0.5.4] — 2026-06-08
 
 ### Added
@@ -119,6 +140,7 @@ All notable changes to **agentop** are documented here. The format is based on
 - Initial release — a `top`-style live terminal dashboard for running Claude
   Code CLI agents. Zero runtime dependencies; macOS/Linux.
 
+[0.5.5]: https://github.com/ktamas77/agentop/releases/tag/v0.5.5
 [0.5.4]: https://github.com/ktamas77/agentop/releases/tag/v0.5.4
 [0.5.3]: https://github.com/ktamas77/agentop/releases/tag/v0.5.3
 [0.5.2]: https://github.com/ktamas77/agentop/releases/tag/v0.5.2
