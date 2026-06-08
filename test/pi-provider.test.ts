@@ -42,6 +42,14 @@ Deno.test('pi.matchProcess accepts Pi shapes and rejects management or pi-go sha
     true,
   );
   assert.equal(pi.matchProcess('pi --no-session'), true);
+  assert.equal(pi.matchProcess('pi fix the failing test'), true);
+  // Trusted flags with numeric values are agent invocations, not calculator input.
+  assert.equal(pi.matchProcess('pi --session 1000'), true);
+  assert.equal(pi.matchProcess('pi --fork 2'), true);
+  assert.equal(pi.matchProcess('pi -r 5'), true);
+  // Bare `pi` with only numeric, flag-free args is the GNU pi calculator.
+  assert.equal(pi.matchProcess('pi 1000'), false);
+  assert.equal(pi.matchProcess('/usr/bin/pi 31415'), false);
   assert.equal(pi.matchProcess('/usr/bin/pi-go tui'), false);
   assert.equal(pi.matchProcess('pi-go'), false);
   assert.equal(pi.matchProcess('pi sessions list'), false);

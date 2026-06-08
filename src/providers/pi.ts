@@ -113,12 +113,25 @@ function hasTrustedPiFlag(args: string): boolean {
   );
 }
 
+// A bare `pi` executable name collides with unrelated tools — most concretely the
+// GNU `pi` arbitrary-precision calculator, invoked as `pi <digits>` with no
+// options. Only that exact shape (flag-free, every argument numeric) is treated
+// as the calculator; anything else is an agent invocation. The flag check matters:
+// a flag's value can itself be numeric (`pi --session 123`, `pi --fork 2`,
+// `pi -r 5`), so counting it as a positional would wrongly drop real sessions.
+function isPiAgentInvocation(tokens: string[]): boolean {
+  const args = tokens.slice(1);
+  if (!args.length) return true;
+  if (args.some((t) => t.startsWith('-'))) return true;
+  return !args.every((t) => /^[0-9]+(?:[.,][0-9]+)?$/.test(t));
+}
+
 export function matchProcess(args: string): boolean {
   if (!args || PI_GO_RE.test(args)) return false;
   const tokens = tokenizeArgs(args);
   if (!tokens.length || isRejectedCommand(tokens)) return false;
   const base = exeBase(args);
-  if (base === 'pi') return true;
+  if (base === 'pi') return isPiAgentInvocation(tokens);
   if (nodeShimHas(args, ['pi'], 'pi-coding-agent')) return true;
   if (base === 'node') {
     return tokens.slice(1).some((token) => {
