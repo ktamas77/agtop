@@ -1,6 +1,6 @@
 {
   "name": "@ktamas77/agentop",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "exports": "./main.ts",
   "tasks": {
     "start": "deno run -A main.ts",

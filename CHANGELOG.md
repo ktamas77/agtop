@@ -4,6 +4,16 @@ All notable changes to **agentop** are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.8] — 2026-06-08
+
+### Fixed
+
+- **Terminal resize no longer leaves a stacked, messy display.** The live loop
+  now does a full-screen clear whenever the terminal size changes, so a resize
+  can't leave stale rows (repeated footer bars) behind — and the mess no longer
+  persists after the original size is restored. Steady-state redraws are
+  unchanged, so there's no added flicker (#12).
+
 ## [0.5.7] — 2026-06-08
 
 ### Changed
@@ -183,6 +193,7 @@ All notable changes to **agentop** are documented here. The format is based on
 - Initial release — a `top`-style live terminal dashboard for running Claude
   Code CLI agents. Zero runtime dependencies; macOS/Linux.
 
+[0.5.8]: https://github.com/ktamas77/agentop/releases/tag/v0.5.8
 [0.5.7]: https://github.com/ktamas77/agentop/releases/tag/v0.5.7
 [0.5.6]: https://github.com/ktamas77/agentop/releases/tag/v0.5.6
 [0.5.5]: https://github.com/ktamas77/agentop/releases/tag/v0.5.5
