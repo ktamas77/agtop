@@ -4,6 +4,14 @@ All notable changes to **agentop** are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.3] — 2026-06-08
+
+### Fixed
+
+- JSR: read the version via a JSON import of deno.json so `main.ts` works when
+  run remotely (`deno run jsr:@ktamas77/agentop`); the previous fs read failed
+  over https.
+
 ## [0.5.2] — 2026-06-08
 
 ### Fixed
@@ -102,6 +110,7 @@ All notable changes to **agentop** are documented here. The format is based on
 - Initial release — a `top`-style live terminal dashboard for running Claude
   Code CLI agents. Zero runtime dependencies; macOS/Linux.
 
+[0.5.3]: https://github.com/ktamas77/agentop/releases/tag/v0.5.3
 [0.5.2]: https://github.com/ktamas77/agentop/releases/tag/v0.5.2
 [0.5.1]: https://github.com/ktamas77/agentop/releases/tag/v0.5.1
 [0.5.0]: https://github.com/ktamas77/agentop/releases/tag/v0.5.0
