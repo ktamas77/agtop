@@ -27,6 +27,8 @@ const STATE_STYLE: Record<DisplayState, { dot: string; color: ColorName; label: 
 export type SortKey = 'cpu' | 'mem' | 'up' | 'idle' | 'project' | 'pid';
 export const SORTS: SortKey[] = ['cpu', 'mem', 'up', 'idle', 'project', 'pid'];
 
+// Sort the top-level process rows by the active key, keeping each parent's
+// subagent rows (parentPid set) pinned directly beneath it regardless of sort.
 export function sortAgents(agents: Agent[], sortKey: string, reverse: boolean): Agent[] {
   const cmps: Record<SortKey, (a: Agent, b: Agent) => number> = {
     cpu: (a, b) => b.cpu - a.cpu,
@@ -37,9 +39,28 @@ export function sortAgents(agents: Agent[], sortKey: string, reverse: boolean): 
     pid: (a, b) => a.pid - b.pid,
   };
   const cmp = cmps[sortKey as SortKey] || (() => 0);
-  const sorted = agents.slice().sort(cmp);
-  if (reverse) sorted.reverse();
-  return sorted;
+
+  const subsByParent = new Map<number, Agent[]>();
+  for (const a of agents) {
+    if (a.parentPid == null) continue;
+    const arr = subsByParent.get(a.parentPid) || [];
+    arr.push(a);
+    subsByParent.set(a.parentPid, arr);
+  }
+
+  const top = agents.filter((a) => a.parentPid == null).sort(cmp);
+  if (reverse) top.reverse();
+
+  const out: Agent[] = [];
+  for (const parent of top) {
+    out.push(parent);
+    const subs = subsByParent.get(parent.pid);
+    if (subs) {
+      subs.sort((a, b) => (a.slug || '').localeCompare(b.slug || ''));
+      out.push(...subs);
+    }
+  }
+  return out;
 }
 
 interface Column {
@@ -79,11 +100,16 @@ export function buildFrame(agents: Agent[], opts: FrameOpts): string {
   const lines: string[] = [];
 
   // ---- Header ----
-  const totalCpu = agents.reduce((s, a) => s + (a.cpu || 0), 0);
-  const totalMem = agents.reduce((s, a) => s + (a.rssKb || 0), 0);
+  // Totals and the "N agents" count cover real processes only; subagents share
+  // their parent's PID and resources, so counting them would double-count.
+  const procs = agents.filter((a) => a.parentPid == null);
+  const subCount = agents.length - procs.length;
+  const totalCpu = procs.reduce((s, a) => s + (a.cpu || 0), 0);
+  const totalMem = procs.reduce((s, a) => s + (a.rssKb || 0), 0);
   const clock = new Date().toLocaleTimeString();
   const title = c.bold(c.brightCyan('agentop')) + c.dim(' — coding agents');
-  const count = agents.length === 1 ? '1 agent' : `${agents.length} agents`;
+  const count = (procs.length === 1 ? '1 agent' : `${procs.length} agents`) +
+    (subCount ? ` · ${subCount} subagent${subCount === 1 ? '' : 's'}` : '');
   const right = c.dim(`${clock}  ↻${opts.interval}s`);
   lines.push(fit(padBetween(`${title}  ${c.bold(String(count))} running`, right, width), width));
   lines.push(
@@ -141,16 +167,19 @@ export function buildFrame(agents: Agent[], opts: FrameOpts): string {
 
 function renderRow(a: Agent, flex: number): string {
   const st = STATE_STYLE[a.state] || STATE_STYLE.idle;
+  const isSub = a.parentPid != null;
   const cells: Record<string, string> = {
-    pid: String(a.pid),
-    agent: a.agent || '-',
+    // Subagents have no OS process of their own: show a SUB tag + ↳parent ref,
+    // their slug in place of project, and '-' for the parent-owned resources.
+    pid: isSub ? 'SUB' : String(a.pid),
+    agent: isSub ? `↳${a.parentPid}` : a.agent || '-',
     model: shortModel(a.model),
-    project: a.project,
+    project: isSub ? a.slug || '(subagent)' : a.project,
     branch: a.gitBranch && a.gitBranch !== 'HEAD' ? a.gitBranch : a.gitBranch || '-',
     state: `${st.dot} ${st.label}`,
-    cpu: (a.cpu || 0).toFixed(1),
-    mem: memFromKb(a.rssKb),
-    up: dur(a.uptimeSec),
+    cpu: isSub ? '-' : (a.cpu || 0).toFixed(1),
+    mem: isSub ? '-' : memFromKb(a.rssKb),
+    up: isSub ? '-' : dur(a.uptimeSec),
     idle: a.idleSec == null ? '-' : dur(a.idleSec),
     activity: activityText(a),
   };
@@ -162,6 +191,8 @@ function renderRow(a: Agent, flex: number): string {
 }
 
 function colorCell(key: string, text: string, a: Agent, stateColor: ColorName): string {
+  // Subagent rows read as secondary: dim their SUB tag and ↳parent reference.
+  if (a.parentPid != null && (key === 'pid' || key === 'agent')) return c.dim(text);
   switch (key) {
     case 'pid':
       return c.dim(text);

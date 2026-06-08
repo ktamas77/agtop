@@ -25,6 +25,7 @@ interface Summary {
   rawState: string;
   detail: string;
   sessionId: string | null;
+  slug: string | null;
 }
 
 // Is this command line a Claude Code CLI session (not the desktop app / helpers)?
@@ -113,11 +114,13 @@ export function summarize(objs: Rec[]): Summary {
   let gitBranch: string | null = null;
   let lastTs: string | null = null;
   let lastPrompt: string | null = null;
+  let slug: string | null = null;
   for (const o of objs) {
     if (o.cwd) cwd = o.cwd;
     if (o.version) version = o.version;
     if (o.gitBranch) gitBranch = o.gitBranch;
     if (o.timestamp) lastTs = o.timestamp;
+    if (o.slug) slug = o.slug;
     if (o.type === 'assistant' && o.message && o.message.model) model = o.message.model;
     if (o.type === 'last-prompt' && o.lastPrompt) lastPrompt = o.lastPrompt;
   }
@@ -132,7 +135,65 @@ export function summarize(objs: Rec[]): Summary {
     rawState: act.rawState,
     detail: act.detail,
     sessionId: null,
+    slug,
   };
+}
+
+// Only surface subagents whose transcript was written within this window — i.e.
+// still live. Matches the `stalled` threshold in state.ts so a subagent ages out
+// of the view shortly after it stops producing activity.
+const SUBAGENT_LIVE_MS = 120_000;
+
+// A live Task-tool subagent's transcript lives at
+// <projectDir>/<sessionId>/subagents/agent-<id>.jsonl, mirroring the main format.
+// Read each recently-written one and emit it as a subagent row under its parent.
+export function collectSubagents(
+  parent: PartialAgent,
+  sessionFile: string,
+  now: number,
+): PartialAgent[] {
+  if (!parent.sessionId) return [];
+  const dir = path.join(path.dirname(sessionFile), parent.sessionId, 'subagents');
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(dir);
+  } catch {
+    return [];
+  }
+  const subs: PartialAgent[] = [];
+  for (const fname of entries) {
+    if (!fname.endsWith('.jsonl')) continue;
+    const file = path.join(dir, fname);
+    try {
+      if (fs.statSync(file).mtimeMs < now - SUBAGENT_LIVE_MS) continue; // stale → skip read
+    } catch {
+      continue;
+    }
+    const objs = readTailObjects(file);
+    if (!objs.length) continue;
+    const s = summarize(objs);
+    subs.push({
+      agent: name,
+      pid: parent.pid,
+      parentPid: parent.pid,
+      slug: s.slug,
+      cpu: 0,
+      rssKb: 0,
+      uptimeSec: 0,
+      cwd: s.cwd ?? parent.cwd,
+      project: parent.project,
+      args: parent.args,
+      model: s.model,
+      version: s.version ?? parent.version,
+      gitBranch: s.gitBranch ?? parent.gitBranch,
+      sessionId: parent.sessionId,
+      lastPrompt: null,
+      lastTs: s.lastTs,
+      rawState: s.rawState,
+      detail: s.detail,
+    });
+  }
+  return subs;
 }
 
 // Join matched Claude processes to their session transcripts (by working dir).
@@ -141,7 +202,7 @@ export function collect(procs: Proc[]): PartialAgent[] {
   for (const p of procs) {
     if (p.cwd) needByCwd.set(p.cwd, (needByCwd.get(p.cwd) || 0) + 1);
   }
-  const sessionsByCwd = new Map<string, Summary[]>();
+  const sessionsByCwd = new Map<string, { sum: Summary; file: string }[]>();
   let scanned = 0;
   for (const f of listSessionFiles()) {
     if (needByCwd.size === 0 || scanned >= MAX_SESSION_SCAN) break;
@@ -153,14 +214,17 @@ export function collect(procs: Proc[]): PartialAgent[] {
     const arr = sessionsByCwd.get(sum.cwd) || [];
     if (arr.length >= (needByCwd.get(sum.cwd) || 0)) continue;
     sum.sessionId = f.sessionId;
-    arr.push(sum);
+    arr.push({ sum, file: f.file });
     sessionsByCwd.set(sum.cwd, arr);
   }
 
-  return procs.map((p) => {
+  const now = Date.now();
+  const agents: PartialAgent[] = [];
+  for (const p of procs) {
     const pool = p.cwd ? sessionsByCwd.get(p.cwd) : undefined;
-    const s = pool && pool.length ? pool.shift()! : null;
-    return {
+    const match = pool && pool.length ? pool.shift()! : null;
+    const s = match ? match.sum : null;
+    const agent: PartialAgent = {
       agent: name,
       pid: p.pid,
       cpu: p.cpu,
@@ -178,5 +242,8 @@ export function collect(procs: Proc[]): PartialAgent[] {
       rawState: s ? s.rawState : 'no-session',
       detail: s ? s.detail : '',
     };
-  });
+    agents.push(agent);
+    if (match) agents.push(...collectSubagents(agent, match.file, now));
+  }
+  return agents;
 }

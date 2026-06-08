@@ -40,7 +40,8 @@ Deno.test('--demo --once prints a snapshot with headers', () => {
   const out = run(['--demo', '--once', '--no-color']).stdout;
   assert.match(out, /agentop/);
   assert.match(out, /AGENT/);
-  assert.match(out, /8 agents running/);
+  assert.match(out, /8 agents · 1 subagent running/);
+  assert.match(out, /SUB/); // the demo subagent row
 });
 
 Deno.test('unknown flag / invalid sort exit non-zero with a message', () => {

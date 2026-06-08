@@ -96,6 +96,31 @@ Deno.test('buildFrame shows an empty-state message with zero agents', () => {
   assert.match(buildFrame([], opts()), /No running agents/);
 });
 
+Deno.test('sortAgents pins subagents directly under their parent', () => {
+  const p1 = sample({ pid: 1, cpu: 1 });
+  const p2 = sample({ pid: 2, cpu: 9 });
+  const s1 = sample({ pid: 1, parentPid: 1, slug: 'sub-a', cpu: 0 });
+  const order = sortAgents([s1, p1, p2], 'cpu', false).map((x) => x.slug ?? `p${x.pid}`);
+  // p2 (higher cpu) first, then p1 immediately followed by its subagent.
+  assert.deepEqual(order, ['p2', 'p1', 'sub-a']);
+});
+
+Deno.test('buildFrame renders a subagent as a SUB / ↳parent row, excluded from the count', () => {
+  const frame = buildFrame(
+    [
+      sample({ pid: 99 }),
+      sample({ pid: 99, parentPid: 99, slug: 'review:bugs', model: 'claude-haiku-4-5' }),
+    ],
+    opts(),
+  );
+  assert.match(frame, /1 agent · 1 subagent running/); // count excludes the subagent
+  assert.match(frame, /SUB/);
+  assert.match(frame, /↳99/);
+  assert.match(frame, /review:bugs/); // slug shown in the project column
+  const subLine = frame.split('\n').find((l) => l.includes('↳99'))!;
+  assert.ok(!/\d+\.\d/.test(subLine), `subagent row should not show cpu: "${subLine}"`);
+});
+
 Deno.test('buildFrame: every line fits within the terminal width at narrow sizes', () => {
   for (const width of [200, 80, 40, 20]) {
     const frame = buildFrame(
