@@ -23,11 +23,17 @@ No install needed — run it with `npx`:
 npx agentop
 ```
 
-Or install globally:
+Or install globally with npm:
 
 ```sh
 npm install -g agentop
 agentop
+```
+
+…or with Homebrew (macOS/Linux):
+
+```sh
+brew install ktamas77/tap/agentop
 ```
 
 Want to see it without any agents running? Try the demo:
@@ -112,6 +118,12 @@ another agent framework is mostly one new file.
 
 - Node.js ≥ 16 to run (the dev test suite uses Node's built-in runner, which needs ≥ 18)
 - macOS or Linux (`ps`, plus `lsof` on macOS)
+- `sqlite3` (a standard system binary) is used for Codex live enrichment; if it's
+  missing, Codex agents still show — just without live model/activity.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## Development
 

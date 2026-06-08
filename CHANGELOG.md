@@ -1,0 +1,82 @@
+# Changelog
+
+All notable changes to **agentop** are documented here. The format is based on
+[Keep a Changelog](https://keepachangelog.com/), and the project follows
+[Semantic Versioning](https://semver.org/).
+
+## [0.4.0] — 2026-06-08
+
+### Added
+
+- **Google Gemini** provider — detects `node …/gemini` (and dedupes the launcher
+  shim vs. the worker), reading chats from
+  `~/.gemini/tmp/<project>/chats/session-*.jsonl`.
+- **Google Antigravity** (`agy`) provider — reads the human-readable transcript
+  under `~/.gemini/antigravity-cli/brain/<id>/…/transcript.jsonl`, matched to the
+  process by the workspace it references; model parsed from the session's
+  settings line.
+- `ps` now captures `ppid`, used to filter out launcher shims.
+- AGENT colors for `gemini` (blue) and `agy` (magenta); wider MODEL column for
+  Gemini-style ids; `shortModel` strips `-preview`/`-exp`/`-latest`.
+
+## [0.3.0] — 2026-06-08
+
+### Added
+
+- **xAI Grok** provider — detects `grok`, reads `~/.grok/sessions/…`
+  (`summary.json` + `events.jsonl`).
+- AGENT column color for `grok` (yellow).
+
+## [0.2.2] — 2026-06-08
+
+### Fixed
+
+- Codex: dropped `sqlite3 -readonly` (failed with `SQLITE_CANTOPEN` on the
+  WAL-mode DB) and silenced subprocess stderr so a failed query can no longer
+  leak into the TUI. Resolve the Codex model from `~/.codex/config.toml` when a
+  live session has no persisted thread row yet.
+
+## [0.2.1] — 2026-06-08
+
+### Changed
+
+- Package description/keywords updated to mention Codex.
+
+## [0.2.0] — 2026-06-08
+
+### Added
+
+- **OpenAI Codex** provider — reads the `threads` table in
+  `~/.codex/state_*.sqlite` via the system `sqlite3` binary (still zero npm
+  deps), with activity from the thread's rollout file.
+- Refactored into a **provider abstraction** (`lib/providers/*`); new **AGENT**
+  column.
+
+## [0.1.2] — 2026-06-07
+
+### Added
+
+- `--demo` mode (fabricated sample agents) and a recorded demo GIF.
+
+## [0.1.1] — 2026-06-07
+
+### Changed
+
+- Releases now publish to npm via OIDC **Trusted Publishing** (no token,
+  provenance-signed).
+
+## [0.1.0] — 2026-06-07
+
+### Added
+
+- Initial release — a `top`-style live terminal dashboard for running Claude
+  Code CLI agents. Zero runtime dependencies; macOS/Linux.
+
+[0.4.0]: https://github.com/ktamas77/agentop/releases/tag/v0.4.0
+[0.3.0]: https://github.com/ktamas77/agentop/releases/tag/v0.3.0
+[0.2.2]: https://github.com/ktamas77/agentop/releases/tag/v0.2.2
+[0.2.1]: https://github.com/ktamas77/agentop/releases/tag/v0.2.1
+[0.2.0]: https://github.com/ktamas77/agentop/releases/tag/v0.2.0
+[0.1.2]: https://github.com/ktamas77/agentop/releases/tag/v0.1.2
+[0.1.1]: https://github.com/ktamas77/agentop/releases/tag/v0.1.1
+[0.1.0]: https://github.com/ktamas77/agentop/releases/tag/v0.1.0
