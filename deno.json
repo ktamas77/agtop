@@ -33,6 +33,7 @@
     ]
   },
   "exclude": [
+    ".claude",
     "dist",
     "node_modules",
     "docs"
