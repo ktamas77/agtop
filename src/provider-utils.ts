@@ -21,6 +21,7 @@ const RECORD_STRING_FIELDS = [
   'lastPrompt',
   'rawState',
   'detail',
+  'slug',
 ];
 
 export interface NewestFile {

@@ -43,6 +43,9 @@ Deno.test('sanitizeAgentRecord sanitizes string fields and preserves numbers', (
     cpu: 4.5,
     project: 'proj\nname',
     detail: '\x1b]0;title\x07danger',
+    // A subagent slug is rendered into the PROJECT column; it comes from an
+    // untrusted transcript and must be sanitized like the other string fields.
+    slug: 'review:bug\x1b]0;pwn\x07scan',
   });
   assert.deepEqual(safe, {
     agent: 'pi',
@@ -50,6 +53,7 @@ Deno.test('sanitizeAgentRecord sanitizes string fields and preserves numbers', (
     cpu: 4.5,
     project: 'proj name',
     detail: 'danger',
+    slug: 'review:bugscan',
   });
 });
 
