@@ -4,6 +4,38 @@ All notable changes to **agentop** are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.6] — 2026-06-08
+
+### Added
+
+- **Live Task subagents as `SUB` rows** — Claude Code Task-tool subagents run
+  inside a single `claude` process, so a process monitor only ever shows the
+  parent. agentop now reads each live session's `subagents/agent-*.jsonl`
+  transcripts (mtime-gated to a 120s window, so finished subagents age out) and
+  renders each active subagent as a flat, dimmed `SUB` row beneath its parent,
+  showing its slug and model. The header count and CPU/MEM totals still reflect
+  only real processes, appending `· N subagents`. The slug is sanitized like the
+  other transcript-derived fields before render (#4).
+
+### Fixed
+
+- **pi:** a bare `pi <digits>` invocation (the GNU arbitrary-precision
+  calculator) is no longer matched as the Pi coding agent. The numeric-only
+  disambiguation now applies only to flag-free command lines, so genuine
+  `pi --session …` / `--fork` / `-r` sessions still match (#5, #8).
+- **install.sh:** the checksum check no longer redirects stderr to `/dev/null`,
+  so a hash mismatch or missing-file error is now visible instead of only the
+  generic "verification FAILED" message (#7, #10).
+
+### Changed
+
+- Restored the WAL-mode / stderr rationale comment in the shared `src/sqlite.ts`
+  read path, documenting why `-readonly` is omitted (it fails with
+  `SQLITE_CANTOPEN` on WAL-mode DBs) and why stderr is discarded (#6, #9).
+- Dev tooling: excluded `.claude` worktrees from `deno fmt`/`lint`/`check`
+  traversal, and made `.husky/pre-commit` executable so the format/lint/test
+  gate runs on commit.
+
 ## [0.5.5] — 2026-06-08
 
 ### Added
@@ -140,6 +172,7 @@ All notable changes to **agentop** are documented here. The format is based on
 - Initial release — a `top`-style live terminal dashboard for running Claude
   Code CLI agents. Zero runtime dependencies; macOS/Linux.
 
+[0.5.6]: https://github.com/ktamas77/agentop/releases/tag/v0.5.6
 [0.5.5]: https://github.com/ktamas77/agentop/releases/tag/v0.5.5
 [0.5.4]: https://github.com/ktamas77/agentop/releases/tag/v0.5.4
 [0.5.3]: https://github.com/ktamas77/agentop/releases/tag/v0.5.3
