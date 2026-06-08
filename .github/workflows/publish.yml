@@ -42,4 +42,6 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      # deno publish runs a type check that needs node_modules for @types/node.
+      - run: deno install
       - run: deno publish
