@@ -2,9 +2,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { readTailObjects } from '../jsonl.ts';
+import { queryJson } from '../sqlite.ts';
 import { firstLine, gitBranch as gitBranchOf } from '../state.ts';
 import { exeBase } from '../processes.ts';
-import { capture } from '../platform.ts';
 import type { Activity, PartialAgent, Proc, Rec } from '../types.ts';
 
 export const name = 'codex' as const;
@@ -58,20 +58,13 @@ function statePath(): string | null {
 }
 
 // Recent non-archived threads via the system `sqlite3` binary (zero npm deps).
-// No -readonly: it fails with SQLITE_CANTOPEN on Codex's WAL-mode DB. capture()
-// discards stderr, so a failed open never leaks into the TUI.
 function queryThreads(): Rec[] {
   const db = statePath();
   if (!db) return [];
   const sql = 'SELECT id, cwd, model, git_branch, cli_version, updated_at_ms, ' +
     'first_user_message, rollout_path FROM threads WHERE archived = 0 ' +
     'ORDER BY updated_at_ms DESC LIMIT 300;';
-  const out = capture('sqlite3', ['-json', db, sql]);
-  try {
-    return out.trim() ? JSON.parse(out) : [];
-  } catch {
-    return [];
-  }
+  return queryJson(db, sql);
 }
 
 // Codex's configured default model from ~/.codex/config.toml.

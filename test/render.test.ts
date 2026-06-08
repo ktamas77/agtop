@@ -61,17 +61,33 @@ Deno.test('buildFrame includes title, AGENT column, and the agent row', () => {
   assert.match(frame, /Bash/);
 });
 
-Deno.test('buildFrame shows codex, grok, gemini, agy rows with models', () => {
+Deno.test('buildFrame shows shipped provider rows with models', () => {
   const frame = buildFrame(
     [
       sample({ agent: 'codex', model: 'gpt-5.5' }),
       sample({ pid: 43, agent: 'grok', model: 'grok-4' }),
       sample({ pid: 44, agent: 'gemini', model: 'gemini-3-flash' }),
       sample({ pid: 45, agent: 'agy', model: 'gemini-3.5-flash' }),
+      sample({ pid: 46, agent: 'pi', model: 'claude-sonnet-4-5' }),
+      sample({ pid: 47, agent: 'hermes', model: 'nous/hermes-4' }),
+      sample({ pid: 48, agent: 'opencode', model: 'anthropic/claude-sonnet-4-5' }),
     ],
     opts(),
   );
-  for (const s of ['codex', 'gpt-5.5', 'grok', 'grok-4', 'gemini', 'gemini-3-flash', 'agy']) {
+  for (
+    const s of [
+      'codex',
+      'gpt-5.5',
+      'grok',
+      'grok-4',
+      'gemini',
+      'gemini-3-flash',
+      'agy',
+      'pi',
+      'hermes',
+      'opencode',
+    ]
+  ) {
     assert.match(frame, new RegExp(s.replace(/[.]/g, '\\.')));
   }
 });

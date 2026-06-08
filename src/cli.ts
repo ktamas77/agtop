@@ -24,7 +24,7 @@ function fail(msg: string): never {
 
 function printHelp(): void {
   platform.write(
-    `agentop — top, but for your running coding agents (Claude, Codex, Grok, Gemini, Antigravity)
+    `agentop — top, but for your running coding agents (Claude, Codex, Grok, Gemini, Antigravity, Pi, Hermes, OpenCode)
 
 USAGE
   agentop [options]
@@ -49,10 +49,12 @@ LIVE KEYS
 
 WHAT IT SHOWS
   Every running 'claude' (Claude Code), 'codex' (OpenAI Codex), 'grok'
-  (xAI Grok), 'gemini' (Google Gemini), and 'agy' (Google Antigravity)
+  (xAI Grok), 'gemini' (Google Gemini), 'agy' (Google Antigravity),
+  'pi' (Earendil Pi), 'hermes' (Hermes Agent), and 'opencode'
   CLI session on this machine, joined to its project, git branch, model,
   and current activity — read live from local session state under
-  ~/.claude, ~/.codex, ~/.grok, and ~/.gemini.
+  ~/.claude, ~/.codex, ~/.grok, ~/.gemini, ~/.pi, ~/.hermes, and
+  ~/.local/share/opencode.
 `,
   );
 }

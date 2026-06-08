@@ -26,6 +26,9 @@ Deno.test('--help documents usage and options', () => {
   assert.match(out, /USAGE/);
   assert.match(out, /agentop \[options\]/);
   assert.match(out, /--json/);
+  assert.match(out, /Pi/);
+  assert.match(out, /Hermes/);
+  assert.match(out, /OpenCode/);
 });
 
 Deno.test('--json emits valid JSON', () => {
@@ -37,7 +40,7 @@ Deno.test('--demo --once prints a snapshot with headers', () => {
   const out = run(['--demo', '--once', '--no-color']).stdout;
   assert.match(out, /agentop/);
   assert.match(out, /AGENT/);
-  assert.match(out, /6 agents running/);
+  assert.match(out, /8 agents running/);
 });
 
 Deno.test('unknown flag / invalid sort exit non-zero with a message', () => {
