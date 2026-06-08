@@ -61,6 +61,22 @@ Deno.test('buildFrame includes title, AGENT column, and the agent row', () => {
   assert.match(frame, /Bash/);
 });
 
+Deno.test('buildFrame grows PROJECT/BRANCH to fit content when wide, truncates when narrow', () => {
+  const longProject = 'warm-fluttering-porcupine'; // 25 chars (> 20 base)
+  const longBranch = 'worktree-warm-fluttering'; // 24 chars (> 12 base)
+  const a = sample({ project: longProject, gitBranch: longBranch, detail: '' });
+
+  // Narrow terminal: PROJECT/BRANCH collapse to their base widths and truncate.
+  const narrow = buildFrame([a], opts({ width: 90 }));
+  assert.ok(!narrow.includes(longProject), 'project should truncate at narrow width');
+  assert.ok(!narrow.includes(longBranch), 'branch should truncate at narrow width');
+
+  // Wide terminal: both expand to show their full content.
+  const wide = buildFrame([a], opts({ width: 170 }));
+  assert.match(wide, /warm-fluttering-porcupine/);
+  assert.match(wide, /worktree-warm-fluttering/);
+});
+
 Deno.test('buildFrame shows shipped provider rows with models', () => {
   const frame = buildFrame(
     [
