@@ -1,5 +1,5 @@
 {
-  "name": "atop",
+  "name": "agtop",
   "version": "0.1.0",
   "description": "top, but for your running Claude Code agents — a live terminal dashboard of every Claude CLI session on your machine.",
   "keywords": [
@@ -14,19 +14,19 @@
     "dashboard",
     "anthropic"
   ],
-  "homepage": "https://github.com/ktamas77/atop#readme",
+  "homepage": "https://github.com/ktamas77/agtop#readme",
   "bugs": {
-    "url": "https://github.com/ktamas77/atop/issues"
+    "url": "https://github.com/ktamas77/agtop/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ktamas77/atop.git"
+    "url": "git+https://github.com/ktamas77/agtop.git"
   },
   "license": "MIT",
   "author": "Tamas Kalman",
   "type": "commonjs",
   "bin": {
-    "atop": "bin/atop.js"
+    "agtop": "bin/agtop.js"
   },
   "files": [
     "bin/",
@@ -35,8 +35,15 @@
     "LICENSE"
   ],
   "scripts": {
-    "start": "node bin/atop.js",
-    "test": "node test/smoke.test.js"
+    "start": "node bin/agtop.js",
+    "test": "node --test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test",
+    "prepare": "husky"
   },
   "engines": {
     "node": ">=16"
@@ -44,5 +51,25 @@
   "os": [
     "darwin",
     "linux"
-  ]
+  ],
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "@types/node": "^22.8.0",
+    "eslint": "^9.13.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^15.11.0",
+    "husky": "^9.1.6",
+    "lint-staged": "^15.2.10",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3"
+  },
+  "lint-staged": {
+    "*.js": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,yml,yaml}": [
+      "prettier --write"
+    ]
+  }
 }

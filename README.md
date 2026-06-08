@@ -1,4 +1,4 @@
-# atop
+# agtop
 
 > `top`, but for your running **Claude Code agents**.
 
@@ -8,29 +8,21 @@ which projects have agents working, what model they're on, which git branch
 they're on, and what each one is doing *right now* (running a tool, thinking,
 or waiting for you).
 
-```
-atop — Claude agents  3 agents running                              17:53:44  ↻2s
-CPU 16.5%   MEM 1.5G   sort:cpu↓                                    host macbook
-
-    PID MODEL        PROJECT              BRANCH       STATE       %CPU    MEM     UP   IDLE ACTIVITY
-  92695 opus-4-8     atop                 main         ● working    8.7   540M     6m     2s ⚙ Bash
-  66514 sonnet-4-6   timebook             main         ● thinking   7.8   571M    22m     4s ▸ thinking…
-  62563 opus-4-8     marketingops         main         ○ idle       0.1   431M    28m    23m awaiting input
-```
+![agtop in action](docs/screenshot.png)
 
 ## Usage
 
 No install needed — run it with `npx`:
 
 ```sh
-npx atop
+npx agtop
 ```
 
 Or install globally:
 
 ```sh
-npm install -g atop
-atop
+npm install -g agtop
+agtop
 ```
 
 ### Live keys
@@ -55,11 +47,11 @@ atop
 -v, --version          Show version
 ```
 
-`--once` and `--json` make `atop` scriptable:
+`--once` and `--json` make `agtop` scriptable:
 
 ```sh
-atop --json | jq '.[] | select(.state == "working") | .project'
-watch -n5 'atop --once'
+agtop --json | jq '.[] | select(.state == "working") | .project'
+watch -n5 'agtop --once'
 ```
 
 ## Columns
@@ -79,7 +71,7 @@ watch -n5 'atop --once'
 
 ## How it works
 
-`atop` reads only local state — nothing is sent anywhere:
+`agtop` reads only local state — nothing is sent anywhere:
 
 1. It lists running **`claude` CLI processes** with `ps` (the desktop app and
    its helpers are filtered out), and resolves each one's working directory
@@ -93,8 +85,24 @@ watch -n5 'atop --once'
 
 ## Requirements
 
-- Node.js ≥ 16
+- Node.js ≥ 16 to run (the dev test suite uses Node's built-in runner, which needs ≥ 18)
 - macOS or Linux (`ps`, plus `lsof` on macOS)
+
+## Development
+
+```sh
+npm install        # also installs the Husky pre-commit hook
+npm test           # unit + CLI tests (node --test, run in parallel)
+npm run lint       # eslint
+npm run typecheck  # tsc --noEmit (type-checks the JS via JSDoc/inference)
+npm run format     # prettier --write
+npm run check      # format:check + lint + typecheck + test (what CI runs)
+```
+
+A Husky **pre-commit** hook runs `lint-staged` (Prettier + ESLint on staged
+files), then the type-check and the full test suite. CI runs the same checks as
+independent parallel jobs (`format`, `lint`, `typecheck`, and a `test` matrix
+across macOS/Linux × Node 18/20/22).
 
 ## License
 

@@ -1,0 +1,8 @@
+echo "▶ lint-staged (prettier + eslint)"
+npx lint-staged || exit 1
+
+echo "▶ typecheck (tsc --noEmit)"
+npm run typecheck || exit 1
+
+echo "▶ unit tests (node --test)"
+npm test || exit 1
