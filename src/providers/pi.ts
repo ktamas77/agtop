@@ -114,14 +114,16 @@ function hasTrustedPiFlag(args: string): boolean {
 }
 
 // A bare `pi` executable name collides with unrelated tools — most concretely the
-// GNU `pi` arbitrary-precision calculator, invoked as `pi <digits>`. Treat a bare
-// `pi` whose only positional arguments are numeric as that tool rather than the
-// coding agent. Interactive `pi`, `pi "<prompt>"`, and `pi --session*`/`--fork`
-// invocations still match (the flag shapes also via the trusted-flag/hint paths).
+// GNU `pi` arbitrary-precision calculator, invoked as `pi <digits>` with no
+// options. Only that exact shape (flag-free, every argument numeric) is treated
+// as the calculator; anything else is an agent invocation. The flag check matters:
+// a flag's value can itself be numeric (`pi --session 123`, `pi --fork 2`,
+// `pi -r 5`), so counting it as a positional would wrongly drop real sessions.
 function isPiAgentInvocation(tokens: string[]): boolean {
-  const positionals = tokens.slice(1).filter((t) => !t.startsWith('-'));
-  if (!positionals.length) return true;
-  return !positionals.every((t) => /^[0-9]+(?:[.,][0-9]+)?$/.test(t));
+  const args = tokens.slice(1);
+  if (!args.length) return true;
+  if (args.some((t) => t.startsWith('-'))) return true;
+  return !args.every((t) => /^[0-9]+(?:[.,][0-9]+)?$/.test(t));
 }
 
 export function matchProcess(args: string): boolean {
