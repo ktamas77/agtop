@@ -1,0 +1,48 @@
+{
+  "name": "atop",
+  "version": "0.1.0",
+  "description": "top, but for your running Claude Code agents — a live terminal dashboard of every Claude CLI session on your machine.",
+  "keywords": [
+    "claude",
+    "claude-code",
+    "top",
+    "htop",
+    "monitor",
+    "cli",
+    "tui",
+    "agents",
+    "dashboard",
+    "anthropic"
+  ],
+  "homepage": "https://github.com/ktamas77/atop#readme",
+  "bugs": {
+    "url": "https://github.com/ktamas77/atop/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ktamas77/atop.git"
+  },
+  "license": "MIT",
+  "author": "Tamas Kalman",
+  "type": "commonjs",
+  "bin": {
+    "atop": "bin/atop.js"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node bin/atop.js",
+    "test": "node test/smoke.test.js"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ]
+}
