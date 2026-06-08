@@ -1,11 +1,19 @@
-'use strict';
+import os from 'node:os';
+import c from './colors.ts';
+import { dur, fit, memFromKb, shortModel } from './format.ts';
+import type { Agent, DisplayState } from './types.ts';
 
-const os = require('os');
-const c = require('./colors');
-const { shortModel, dur, memFromKb, fit } = require('./format');
+type ColorName =
+  | 'brightGreen'
+  | 'brightCyan'
+  | 'green'
+  | 'yellow'
+  | 'gray'
+  | 'brightYellow'
+  | 'blue';
 
 // State -> { dot, color } for the STATE column.
-const STATE_STYLE = {
+const STATE_STYLE: Record<DisplayState, { dot: string; color: ColorName; label: string }> = {
   working: { dot: '●', color: 'brightGreen', label: 'working' },
   thinking: { dot: '●', color: 'brightCyan', label: 'thinking' },
   replied: { dot: '○', color: 'green', label: 'replied' },
@@ -16,25 +24,33 @@ const STATE_STYLE = {
   live: { dot: '●', color: 'blue', label: 'live' },
 };
 
-const SORTS = ['cpu', 'mem', 'up', 'idle', 'project', 'pid'];
+export type SortKey = 'cpu' | 'mem' | 'up' | 'idle' | 'project' | 'pid';
+export const SORTS: SortKey[] = ['cpu', 'mem', 'up', 'idle', 'project', 'pid'];
 
-function sortAgents(agents, sortKey, reverse) {
-  const cmp =
-    {
-      cpu: (a, b) => b.cpu - a.cpu,
-      mem: (a, b) => b.rssKb - a.rssKb,
-      up: (a, b) => b.uptimeSec - a.uptimeSec,
-      idle: (a, b) => (a.idleSec ?? Infinity) - (b.idleSec ?? Infinity),
-      project: (a, b) => a.project.localeCompare(b.project),
-      pid: (a, b) => a.pid - b.pid,
-    }[sortKey] || (() => 0);
+export function sortAgents(agents: Agent[], sortKey: string, reverse: boolean): Agent[] {
+  const cmps: Record<SortKey, (a: Agent, b: Agent) => number> = {
+    cpu: (a, b) => b.cpu - a.cpu,
+    mem: (a, b) => b.rssKb - a.rssKb,
+    up: (a, b) => b.uptimeSec - a.uptimeSec,
+    idle: (a, b) => (a.idleSec ?? Infinity) - (b.idleSec ?? Infinity),
+    project: (a, b) => a.project.localeCompare(b.project),
+    pid: (a, b) => a.pid - b.pid,
+  };
+  const cmp = cmps[sortKey as SortKey] || (() => 0);
   const sorted = agents.slice().sort(cmp);
   if (reverse) sorted.reverse();
   return sorted;
 }
 
+interface Column {
+  key: string;
+  header: string;
+  width: number;
+  align: 'left' | 'right';
+}
+
 // Column layout. width 0 == flex (takes the remaining terminal width).
-const COLUMNS = [
+const COLUMNS: Column[] = [
   { key: 'pid', header: 'PID', width: 7, align: 'right' },
   { key: 'agent', header: 'AGENT', width: 7, align: 'left' },
   { key: 'model', header: 'MODEL', width: 16, align: 'left' },
@@ -48,10 +64,19 @@ const COLUMNS = [
   { key: 'activity', header: 'ACTIVITY', width: 0, align: 'left' },
 ];
 
-function buildFrame(agents, opts) {
-  const width = opts.width || process.stdout.columns || 100;
-  const height = opts.height || process.stdout.rows || 30;
-  const lines = [];
+export interface FrameOpts {
+  width?: number;
+  height?: number;
+  interval: number;
+  sort: string;
+  reverse: boolean;
+  once: boolean;
+}
+
+export function buildFrame(agents: Agent[], opts: FrameOpts): string {
+  const width = opts.width || 100;
+  const height = opts.height || 30;
+  const lines: string[] = [];
 
   // ---- Header ----
   const totalCpu = agents.reduce((s, a) => s + (a.cpu || 0), 0);
@@ -65,7 +90,9 @@ function buildFrame(agents, opts) {
     fit(
       padBetween(
         c.dim(
-          `CPU ${totalCpu.toFixed(1)}%   MEM ${memFromKb(totalMem)}   sort:${opts.sort}${opts.reverse ? '↑' : '↓'}`,
+          `CPU ${totalCpu.toFixed(1)}%   MEM ${memFromKb(totalMem)}   sort:${opts.sort}${
+            opts.reverse ? '↑' : '↓'
+          }`,
         ),
         c.dim(`host ${os.hostname().split('.')[0]}`),
         width,
@@ -81,16 +108,14 @@ function buildFrame(agents, opts) {
   const flex = Math.max(10, width - fixed - gaps);
 
   // ---- Header row ----
-  const headerCells = COLUMNS.map((col) => {
-    const w = col.width === 0 ? flex : col.width;
-    return fit(col.header, w, col.align);
-  });
+  const headerCells = COLUMNS.map((col) =>
+    fit(col.header, col.width === 0 ? flex : col.width, col.align)
+  );
   lines.push(c.bold(c.inverse(fit(headerCells.join(' '), width))));
 
   // ---- Rows ----
   const bodyRows = Math.max(0, height - lines.length - 1); // leave 1 line for footer
-  const shown = agents.slice(0, bodyRows);
-  for (const a of shown) {
+  for (const a of agents.slice(0, bodyRows)) {
     lines.push(fit(renderRow(a, flex), width));
   }
 
@@ -104,23 +129,21 @@ function buildFrame(agents, opts) {
 
   // ---- Footer ----
   while (lines.length < height - 1) lines.push('');
-  const footer = opts.once
-    ? ''
-    : c.inverse(
-        fit(
-          ' q quit   s sort   r reverse   +/- interval' +
-            (agents.length > bodyRows ? `   (+${agents.length - bodyRows} more)` : ''),
-          width,
-        ),
-      );
+  const footer = opts.once ? '' : c.inverse(
+    fit(
+      ' q quit   s sort   r reverse   +/- interval' +
+        (agents.length > bodyRows ? `   (+${agents.length - bodyRows} more)` : ''),
+      width,
+    ),
+  );
   if (footer) lines.push(footer);
 
   return lines.join('\n');
 }
 
-function renderRow(a, flex) {
+function renderRow(a: Agent, flex: number): string {
   const st = STATE_STYLE[a.state] || STATE_STYLE.idle;
-  const cells = {
+  const cells: Record<string, string> = {
     pid: String(a.pid),
     agent: a.agent || '-',
     model: shortModel(a.model),
@@ -134,15 +157,13 @@ function renderRow(a, flex) {
     activity: activityText(a),
   };
 
-  const out = COLUMNS.map((col) => {
-    const width = col.width === 0 ? flex : col.width;
-    const text = fit(cells[col.key], width, col.align);
-    return colorCell(col.key, text, a, st);
-  });
-  return out.join(' ');
+  return COLUMNS.map((col) => {
+    const text = fit(cells[col.key], col.width === 0 ? flex : col.width, col.align);
+    return colorCell(col.key, text, a, st.color);
+  }).join(' ');
 }
 
-function colorCell(key, text, a, st) {
+function colorCell(key: string, text: string, a: Agent, stateColor: ColorName): string {
   switch (key) {
     case 'pid':
       return c.dim(text);
@@ -159,7 +180,7 @@ function colorCell(key, text, a, st) {
     case 'branch':
       return c.cyan(text);
     case 'state':
-      return c[st.color] ? c[st.color](text) : text;
+      return c[stateColor](text);
     case 'cpu':
       return (a.cpu || 0) > 20 ? c.brightYellow(text) : text;
     case 'activity':
@@ -169,7 +190,7 @@ function colorCell(key, text, a, st) {
   }
 }
 
-function activityText(a) {
+function activityText(a: Agent): string {
   if (a.rawState === 'no-session') return a.args || '(no transcript)';
   if (a.rawState === 'tool') return `⚙ ${a.detail}`;
   if (a.rawState === 'thinking') return a.detail ? `▸ ${a.detail}` : '▸ thinking…';
@@ -178,11 +199,7 @@ function activityText(a) {
 }
 
 // Left + right text on one line, padded to width (ANSI-aware).
-function padBetween(left, right, width) {
-  const lw = c.width(left);
-  const rw = c.width(right);
-  const space = Math.max(1, width - lw - rw);
+function padBetween(left: string, right: string, width: number): string {
+  const space = Math.max(1, width - c.width(left) - c.width(right));
   return left + ' '.repeat(space) + right;
 }
-
-module.exports = { buildFrame, sortAgents, SORTS };

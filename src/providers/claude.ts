@@ -1,17 +1,34 @@
-'use strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { readTailObjects } from '../jsonl.ts';
+import { firstLine } from '../state.ts';
+import { exeBase } from '../processes.ts';
+import type { Activity, PartialAgent, Proc, Rec } from '../types.ts';
 
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const { readTailObjects } = require('../jsonl');
-const { firstLine } = require('../state');
-const { exeBase } = require('../processes');
-
-const name = 'claude';
+export const name = 'claude' as const;
 const MAX_SESSION_SCAN = 120;
 
+interface SessionFile {
+  file: string;
+  mtimeMs: number;
+  sessionId: string;
+}
+
+interface Summary {
+  cwd: string | null;
+  model: string | null;
+  version: string | null;
+  gitBranch: string | null;
+  lastTs: number | null;
+  lastPrompt: string | null;
+  rawState: string;
+  detail: string;
+  sessionId: string | null;
+}
+
 // Is this command line a Claude Code CLI session (not the desktop app / helpers)?
-function matchProcess(args) {
+export function matchProcess(args: string): boolean {
   if (!args) return false;
   if (args.includes('Claude.app')) return false;
   if (/Claude Helper|chrome-native-host|crashpad/.test(args)) return false;
@@ -27,36 +44,39 @@ function matchProcess(args) {
   return false;
 }
 
-function projectsRoot() {
+export function projectsRoot(): string {
   return path.join(os.homedir(), '.claude', 'projects');
 }
 
 // Every Claude session transcript across all projects, newest first.
-function listSessionFiles() {
+export function listSessionFiles(): SessionFile[] {
   const root = projectsRoot();
-  let dirs;
+  let dirs: fs.Dirent[];
   try {
     dirs = fs.readdirSync(root, { withFileTypes: true });
-  } catch (e) {
+  } catch {
     return [];
   }
-  const files = [];
+  const files: SessionFile[] = [];
   for (const d of dirs) {
     if (!d.isDirectory()) continue;
     const dir = path.join(root, d.name);
-    let entries;
+    let entries: string[];
     try {
       entries = fs.readdirSync(dir);
-    } catch (e) {
+    } catch {
       continue;
     }
     for (const fname of entries) {
       if (!fname.endsWith('.jsonl')) continue;
       const file = path.join(dir, fname);
       try {
-        const st = fs.statSync(file);
-        files.push({ file, mtimeMs: st.mtimeMs, sessionId: fname.replace(/\.jsonl$/, '') });
-      } catch (e) {
+        files.push({
+          file,
+          mtimeMs: fs.statSync(file).mtimeMs,
+          sessionId: fname.replace(/\.jsonl$/, ''),
+        });
+      } catch {
         /* skip */
       }
     }
@@ -66,18 +86,18 @@ function listSessionFiles() {
 }
 
 // Classify what the agent is doing from the last meaningful transcript entry.
-function deriveActivity(last) {
+function deriveActivity(last: Rec | null): Activity {
   if (!last) return { rawState: 'unknown', detail: '' };
   if (last.type === 'assistant' && last.message) {
     const content = Array.isArray(last.message.content) ? last.message.content : [];
-    const tools = content.filter((b) => b && b.type === 'tool_use').map((b) => b.name);
+    const tools = content.filter((b: Rec) => b && b.type === 'tool_use').map((b: Rec) => b.name);
     if (tools.length) return { rawState: 'tool', detail: tools.join(', ') };
-    const text = content.find((b) => b && b.type === 'text');
+    const text = content.find((b: Rec) => b && b.type === 'text');
     return { rawState: 'replied', detail: text ? firstLine(text.text) : '' };
   }
   if (last.type === 'user' && last.message) {
     const content = last.message.content;
-    if (Array.isArray(content) && content.some((b) => b && b.type === 'tool_result')) {
+    if (Array.isArray(content) && content.some((b: Rec) => b && b.type === 'tool_result')) {
       return { rawState: 'thinking', detail: '' };
     }
     return { rawState: 'thinking', detail: firstLine(typeof content === 'string' ? content : '') };
@@ -86,13 +106,13 @@ function deriveActivity(last) {
 }
 
 // Summarize a session from its tail objects.
-function summarize(objs) {
-  let cwd = null;
-  let model = null;
-  let version = null;
-  let gitBranch = null;
-  let lastTs = null;
-  let lastPrompt = null;
+export function summarize(objs: Rec[]): Summary {
+  let cwd: string | null = null;
+  let model: string | null = null;
+  let version: string | null = null;
+  let gitBranch: string | null = null;
+  let lastTs: string | null = null;
+  let lastPrompt: string | null = null;
   for (const o of objs) {
     if (o.cwd) cwd = o.cwd;
     if (o.version) version = o.version;
@@ -101,8 +121,7 @@ function summarize(objs) {
     if (o.type === 'assistant' && o.message && o.message.model) model = o.message.model;
     if (o.type === 'last-prompt' && o.lastPrompt) lastPrompt = o.lastPrompt;
   }
-  const last = objs.length ? objs[objs.length - 1] : null;
-  const act = deriveActivity(last);
+  const act = deriveActivity(objs.length ? objs[objs.length - 1] : null);
   return {
     cwd,
     model,
@@ -112,16 +131,17 @@ function summarize(objs) {
     lastPrompt,
     rawState: act.rawState,
     detail: act.detail,
+    sessionId: null,
   };
 }
 
 // Join matched Claude processes to their session transcripts (by working dir).
-function collect(procs) {
-  const needByCwd = new Map();
+export function collect(procs: Proc[]): PartialAgent[] {
+  const needByCwd = new Map<string, number>();
   for (const p of procs) {
     if (p.cwd) needByCwd.set(p.cwd, (needByCwd.get(p.cwd) || 0) + 1);
   }
-  const sessionsByCwd = new Map();
+  const sessionsByCwd = new Map<string, Summary[]>();
   let scanned = 0;
   for (const f of listSessionFiles()) {
     if (needByCwd.size === 0 || scanned >= MAX_SESSION_SCAN) break;
@@ -131,15 +151,15 @@ function collect(procs) {
     const sum = summarize(objs);
     if (!sum.cwd || !needByCwd.has(sum.cwd)) continue;
     const arr = sessionsByCwd.get(sum.cwd) || [];
-    if (arr.length >= needByCwd.get(sum.cwd)) continue;
+    if (arr.length >= (needByCwd.get(sum.cwd) || 0)) continue;
     sum.sessionId = f.sessionId;
     arr.push(sum);
     sessionsByCwd.set(sum.cwd, arr);
   }
 
   return procs.map((p) => {
-    const pool = sessionsByCwd.get(p.cwd);
-    const s = pool && pool.length ? pool.shift() : null;
+    const pool = p.cwd ? sessionsByCwd.get(p.cwd) : undefined;
+    const s = pool && pool.length ? pool.shift()! : null;
     return {
       agent: name,
       pid: p.pid,
@@ -160,5 +180,3 @@ function collect(procs) {
     };
   });
 }
-
-module.exports = { name, matchProcess, collect, summarize, listSessionFiles, projectsRoot };

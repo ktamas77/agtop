@@ -1,22 +1,21 @@
-'use strict';
+import { listAllProcesses, resolveCwds } from './processes.ts';
+import { classifyState } from './state.ts';
+import * as claude from './providers/claude.ts';
+import * as codex from './providers/codex.ts';
+import * as grok from './providers/grok.ts';
+import * as gemini from './providers/gemini.ts';
+import * as agy from './providers/agy.ts';
+import type { Agent, Proc, Provider } from './types.ts';
 
-const { listAllProcesses, resolveCwds } = require('./processes');
-const { classifyState } = require('./state');
-const claude = require('./providers/claude');
-const codex = require('./providers/codex');
-const grok = require('./providers/grok');
-const gemini = require('./providers/gemini');
-const agy = require('./providers/agy');
+const PROVIDERS: Provider[] = [claude, codex, grok, gemini, agy];
 
-const PROVIDERS = [claude, codex, grok, gemini, agy];
-
-// Build the list of running-agent records across all providers (Claude, Codex).
-function collectAgents() {
+// Build the list of running-agent records across all providers.
+export function collectAgents(): Agent[] {
   const all = listAllProcesses();
 
   // Map each process to the first provider that claims it.
-  const providerOf = new Map();
-  let matched = [];
+  const providerOf = new Map<Proc, Provider>();
+  let matched: Proc[] = [];
   for (const p of all) {
     const provider = PROVIDERS.find((pr) => pr.matchProcess(p.args));
     if (provider) {
@@ -26,9 +25,8 @@ function collectAgents() {
   }
 
   // Drop launcher shims: a matched process that is the parent of another matched
-  // process of the same provider (e.g. Gemini's `node gemini` shim that spawns
-  // the actual worker). Keep the leaf — it holds the real session.
-  const parentPids = new Set();
+  // process of the same provider (e.g. Gemini's `node gemini` shim). Keep the leaf.
+  const parentPids = new Set<number>();
   for (const c of matched) {
     const parent = matched.find((p) => p.pid === c.ppid && providerOf.get(p) === providerOf.get(c));
     if (parent) parentPids.add(parent.pid);
@@ -39,7 +37,7 @@ function collectAgents() {
   resolveCwds(matched);
 
   const now = Date.now();
-  const agents = [];
+  const agents: Agent[] = [];
   for (const provider of PROVIDERS) {
     const procs = matched.filter((p) => providerOf.get(p) === provider);
     if (!procs.length) continue;
@@ -51,4 +49,4 @@ function collectAgents() {
   return agents;
 }
 
-module.exports = { collectAgents, classifyState };
+export { classifyState };

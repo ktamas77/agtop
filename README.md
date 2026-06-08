@@ -36,6 +36,14 @@ agentop
 brew install ktamas77/tap/agentop
 ```
 
+…or with Deno (it's published to [JSR](https://jsr.io/@ktamas77/agentop) and runs
+TypeScript natively):
+
+```sh
+deno run -A jsr:@ktamas77/agentop          # run it
+deno install -gA -n agentop jsr:@ktamas77/agentop   # install the command
+```
+
 Want to see it without any agents running? Try the demo:
 
 ```sh
@@ -111,12 +119,13 @@ watch -n5 'agentop --once'
 3. From each it extracts the model, git branch, version, last-activity time, and
    the current tool call, and renders it all as a `top`-style table.
 
-The design is a small **provider** abstraction (`lib/providers/*`), so adding
+The design is a small **provider** abstraction (`src/providers/*`), so adding
 another agent framework is mostly one new file.
 
 ## Requirements
 
-- Node.js ≥ 16 to run (the dev test suite uses Node's built-in runner, which needs ≥ 18)
+- Runs on **Node.js ≥ 18** or **Deno ≥ 2** — the same TypeScript source runs on
+  both (a tiny `src/platform.ts` abstracts the runtime).
 - macOS or Linux (`ps`, plus `lsof` on macOS)
 - `sqlite3` (a standard system binary) is used for Codex live enrichment; if it's
   missing, Codex agents still show — just without live model/activity.
@@ -127,19 +136,24 @@ See [CHANGELOG.md](CHANGELOG.md).
 
 ## Development
 
+The project is **TypeScript**, ESM. Deno is the dev toolchain (it runs `.ts`
+natively); `tsc` builds the npm `dist/`.
+
 ```sh
-npm install        # also installs the Husky pre-commit hook
-npm test           # unit + CLI tests (node --test, run in parallel)
-npm run lint       # eslint
-npm run typecheck  # tsc --noEmit (type-checks the JS via JSDoc/inference)
-npm run format     # prettier --write
-npm run check      # format:check + lint + typecheck + test (what CI runs)
+deno task start          # run from source
+deno task demo           # run the demo
+deno test -A             # full test suite
+deno fmt && deno lint    # format + lint
+deno check main.ts       # type-check
+npm run build            # tsc -> dist/ (the npm artifact)
+npm run check            # fmt + lint + check + test + build (what CI runs)
 ```
 
-A Husky **pre-commit** hook runs `lint-staged` (Prettier + ESLint on staged
-files), then the type-check and the full test suite. CI runs the same checks as
-independent parallel jobs (`format`, `lint`, `typecheck`, and a `test` matrix
-across macOS/Linux × Node 18/20/22).
+`src/*.ts` is the shared, typed core (one `src/providers/<name>.ts` per agent
+framework). Entry points: `bin/agentop.js` (npm, over the built `dist/`) and
+`main.ts` (Deno). A Husky **pre-commit** hook runs the same `deno fmt/lint/check/
+test` + `tsc` build; CI runs a Deno matrix and a Node build/smoke matrix across
+macOS/Linux.
 
 ## License
 

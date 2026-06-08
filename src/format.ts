@@ -1,10 +1,8 @@
-'use strict';
-
-const c = require('./colors');
+import c from './colors.ts';
 
 // claude-opus-4-8 -> opus-4-8 ; claude-haiku-4-5-20251001 -> haiku-4-5 ;
 // gemini-3-flash-preview -> gemini-3-flash
-function shortModel(model) {
+export function shortModel(model: string | null | undefined): string {
   if (!model) return '?';
   return String(model)
     .replace(/^claude-/, '')
@@ -14,7 +12,7 @@ function shortModel(model) {
 }
 
 // Parse ps ELAPSED format ([[DD-]HH:]MM:SS) into seconds.
-function parseEtime(etime) {
+export function parseEtime(etime: string): number {
   if (!etime) return 0;
   let days = 0;
   let rest = etime;
@@ -34,7 +32,7 @@ function parseEtime(etime) {
 }
 
 // Compact duration: 9s, 3m, 1h12, 2d3h
-function dur(seconds) {
+export function dur(seconds: number | null | undefined): string {
   if (seconds == null || !isFinite(seconds)) return '-';
   seconds = Math.max(0, Math.floor(seconds));
   if (seconds < 60) return `${seconds}s`;
@@ -49,13 +47,12 @@ function dur(seconds) {
 }
 
 // KB (as reported by ps rss) -> human readable.
-function memFromKb(kb) {
+export function memFromKb(kb: number | null | undefined): string {
   if (kb == null) return '-';
-  const bytes = kb * 1024;
-  return bytes2human(bytes);
+  return bytes2human(kb * 1024);
 }
 
-function bytes2human(bytes) {
+export function bytes2human(bytes: number): string {
   const units = ['B', 'K', 'M', 'G', 'T'];
   let n = bytes;
   let i = 0;
@@ -68,18 +65,16 @@ function bytes2human(bytes) {
 }
 
 // Pad/truncate a string to an exact visible width (ANSI-aware).
-function fit(str, width, align = 'left') {
-  str = str == null ? '' : String(str);
-  const w = c.width(str);
-  if (w === width) return str;
+export function fit(str: unknown, width: number, align: 'left' | 'right' = 'left'): string {
+  const s = str == null ? '' : String(str);
+  const w = c.width(s);
+  if (w === width) return s;
   if (w > width) {
     // Truncate raw text (assumes no color in truncated cells; we color after fit).
-    const plain = c.strip(str);
+    const plain = c.strip(s);
     if (width <= 1) return plain.slice(0, width);
     return plain.slice(0, width - 1) + '…';
   }
   const pad = ' '.repeat(width - w);
-  return align === 'right' ? pad + str : str + pad;
+  return align === 'right' ? pad + s : s + pad;
 }
-
-module.exports = { shortModel, parseEtime, dur, memFromKb, bytes2human, fit };

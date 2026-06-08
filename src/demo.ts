@@ -1,10 +1,21 @@
-'use strict';
-
 // Fabricated agents for `agentop --demo` — privacy-safe, reproducible sample
 // data for screenshots, demo GIFs, and previewing the UI without running any
-// real Claude sessions. States cycle over time so the live view looks alive.
+// real sessions. States cycle over time so the live view looks alive.
 
-const FIXTURES = [
+import type { Agent, DisplayState, Framework, RawState } from './types.ts';
+
+interface Fixture {
+  pid: number;
+  agent: Framework;
+  project: string;
+  branch: string;
+  model: string;
+  baseCpu: number;
+  rssKb: number;
+  uptimeSec: number;
+}
+
+const FIXTURES: Fixture[] = [
   {
     pid: 50121,
     agent: 'claude',
@@ -67,9 +78,14 @@ const FIXTURES = [
   },
 ];
 
-// Each rotation step: [rawState, detail, idleSec]. classifyState (in render via
-// the precomputed `state`) maps these to colors; we set `state` directly here.
-const CYCLE = [
+interface Phase {
+  rawState: RawState;
+  detail: string;
+  idleSec: number;
+  state: DisplayState;
+}
+
+const CYCLE: Phase[] = [
   { rawState: 'tool', detail: 'Bash', idleSec: 1, state: 'working' },
   { rawState: 'tool', detail: 'Edit', idleSec: 2, state: 'working' },
   { rawState: 'thinking', detail: '', idleSec: 3, state: 'thinking' },
@@ -82,12 +98,13 @@ const CYCLE = [
 
 // Build the demo agent list for a given timestamp (ms). Pass a fixed value for
 // deterministic output (tests); omit for a live, animated view.
-function demoAgents(nowMs = Date.now()) {
+export function demoAgents(nowMs: number = Date.now()): Agent[] {
   const tick = Math.floor(nowMs / 1000);
   return FIXTURES.map((f, i) => {
     const phase = CYCLE[(tick + i * 2) % CYCLE.length];
-    const cpuJitter =
-      phase.state === 'idle' || phase.state === 'waiting' ? 0 : ((tick + i) % 5) - 2;
+    const cpuJitter = phase.state === 'idle' || phase.state === 'waiting'
+      ? 0
+      : ((tick + i) % 5) - 2;
     return {
       pid: f.pid,
       agent: f.agent,
@@ -102,6 +119,7 @@ function demoAgents(nowMs = Date.now()) {
       gitBranch: f.branch,
       sessionId: null,
       lastPrompt: null,
+      lastTs: null,
       rawState: phase.rawState,
       detail: phase.detail,
       idleSec: phase.idleSec,
@@ -109,5 +127,3 @@ function demoAgents(nowMs = Date.now()) {
     };
   });
 }
-
-module.exports = { demoAgents };

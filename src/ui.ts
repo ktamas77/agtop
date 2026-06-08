@@ -1,8 +1,7 @@
-'use strict';
-
-const { collectAgents } = require('./collect');
-const { demoAgents } = require('./demo');
-const { buildFrame, sortAgents, SORTS } = require('./render');
+import { collectAgents } from './collect.ts';
+import { demoAgents } from './demo.ts';
+import { buildFrame, sortAgents, SORTS } from './render.ts';
+import * as platform from './platform.ts';
 
 const ALT_ON = '\x1b[?1049h';
 const ALT_OFF = '\x1b[?1049l';
@@ -14,66 +13,63 @@ const CLEAR_BELOW = '\x1b[0J';
 const CTRL_C = String.fromCharCode(3);
 const ESC = String.fromCharCode(27);
 
+export interface LiveOpts {
+  interval: number;
+  sort: string;
+  reverse: boolean;
+  demo: boolean;
+}
+
 // Run the live, top-style dashboard until the user quits.
-function runLive(opts) {
-  const state = {
-    interval: opts.interval,
-    sort: opts.sort,
-    reverse: opts.reverse,
-  };
+export function runLive(opts: LiveOpts): void {
+  const state = { interval: opts.interval, sort: opts.sort, reverse: opts.reverse };
   const collect = opts.demo ? demoAgents : collectAgents;
 
-  const out = process.stdout;
-  out.write(ALT_ON + HIDE_CURSOR);
+  platform.write(ALT_ON + HIDE_CURSOR);
 
-  let timer = null;
+  let timer: ReturnType<typeof setInterval> | null = null;
   let stopped = false;
 
-  function cleanup() {
+  function cleanup(): void {
     if (stopped) return;
     stopped = true;
     if (timer) clearInterval(timer);
-    if (process.stdin.isTTY) {
-      try {
-        process.stdin.setRawMode(false);
-      } catch (e) {
-        /* ignore */
-      }
-    }
-    process.stdin.pause();
-    out.write(SHOW_CURSOR + ALT_OFF);
+    platform.setRaw(false);
+    platform.pauseInput();
+    platform.write(SHOW_CURSOR + ALT_OFF);
   }
 
-  function draw() {
+  function draw(): void {
+    const { columns, rows } = platform.consoleSize();
     const agents = sortAgents(collect(), state.sort, state.reverse);
     const frame = buildFrame(agents, {
-      width: out.columns,
-      height: out.rows,
+      width: columns,
+      height: rows,
       interval: state.interval,
       sort: state.sort,
       reverse: state.reverse,
       once: false,
     });
-    out.write(HOME + frame + CLEAR_BELOW);
+    platform.write(HOME + frame + CLEAR_BELOW);
   }
 
-  function reschedule() {
+  function reschedule(): void {
     if (timer) clearInterval(timer);
     timer = setInterval(draw, state.interval * 1000);
   }
 
-  // Keyboard handling (raw mode).
-  if (process.stdin.isTTY) {
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.setEncoding('utf8');
-    process.stdin.on('data', (data) => {
-      const key = data.toString();
+  function quit(): void {
+    cleanup();
+    platform.exit(0);
+  }
+
+  if (platform.isTTY('stdin')) {
+    platform.setRaw(true);
+    platform.onKey((key) => {
       if (key === CTRL_C || key === 'q' || key === ESC) {
-        cleanup();
-        process.exit(0);
+        quit();
       } else if (key === 's') {
-        const i = SORTS.indexOf(state.sort);
+        const i = SORTS.indexOf(state.sort as never);
         state.sort = SORTS[(i + 1) % SORTS.length];
         draw();
       } else if (key === 'r') {
@@ -91,19 +87,11 @@ function runLive(opts) {
     });
   }
 
-  process.on('SIGINT', () => {
-    cleanup();
-    process.exit(0);
-  });
-  process.on('SIGTERM', () => {
-    cleanup();
-    process.exit(0);
-  });
-  process.on('exit', cleanup);
-  out.on('resize', draw);
+  platform.onSignal('SIGINT', quit);
+  platform.onSignal('SIGTERM', quit);
+  platform.onExit(cleanup);
+  platform.onResize(draw);
 
   draw();
   reschedule();
 }
-
-module.exports = { runLive };

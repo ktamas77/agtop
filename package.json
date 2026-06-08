@@ -1,6 +1,6 @@
 {
   "name": "agentop",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "top, but for your running coding agents — a live terminal dashboard of every Claude Code, OpenAI Codex, xAI Grok, Google Gemini, and Antigravity CLI session on your machine.",
   "keywords": [
     "claude",
@@ -34,52 +34,38 @@
   },
   "license": "MIT",
   "author": "Tamas Kalman",
-  "type": "commonjs",
+  "type": "module",
   "bin": {
     "agentop": "bin/agentop.js"
   },
   "files": [
+    "dist/",
     "bin/",
-    "lib/",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "start": "node bin/agentop.js",
-    "test": "node --test",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm test",
+    "build": "tsc",
+    "start": "deno run -A main.ts",
+    "demo": "deno run -A main.ts --demo",
+    "fmt": "deno fmt",
+    "lint": "deno lint",
+    "typecheck": "deno check main.ts",
+    "test": "deno test -A",
+    "check": "deno fmt --check && deno lint && deno check main.ts && deno test -A && npm run build",
+    "prepublishOnly": "npm run build",
     "prepare": "husky"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "os": [
     "darwin",
     "linux"
   ],
   "devDependencies": {
-    "@eslint/js": "^9.13.0",
     "@types/node": "^22.8.0",
-    "eslint": "^9.13.0",
-    "eslint-config-prettier": "^9.1.0",
-    "globals": "^15.11.0",
     "husky": "^9.1.6",
-    "lint-staged": "^15.2.10",
-    "prettier": "^3.3.3",
-    "typescript": "^5.6.3"
-  },
-  "lint-staged": {
-    "*.js": [
-      "prettier --write",
-      "eslint --fix"
-    ],
-    "*.{json,yml,yaml}": [
-      "prettier --write"
-    ]
+    "typescript": "^5.7.2"
   }
 }

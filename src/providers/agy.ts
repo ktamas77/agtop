@@ -1,19 +1,17 @@
-'use strict';
-
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const { readTailObjects, readHeadObjects } = require('../jsonl');
-const { firstLine, gitBranch: gitBranchOf } = require('../state');
-const { exeBase } = require('../processes');
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { readHeadObjects, readTailObjects } from '../jsonl.ts';
+import { firstLine, gitBranch as gitBranchOf } from '../state.ts';
+import { exeBase } from '../processes.ts';
+import type { Activity, PartialAgent, Proc, Rec } from '../types.ts';
 
 // Google's Antigravity CLI — the command is `agy`; sessions live under
 // ~/.gemini/antigravity-cli/. We label the agent by its command, `agy`.
-const name = 'agy';
+export const name = 'agy' as const;
 const MAX_BRAIN_SCAN = 80;
 
-// Friendly labels for Antigravity's transcript step types.
-const STEP_LABELS = {
+const STEP_LABELS: Record<string, string> = {
   LIST_DIRECTORY: 'List',
   VIEW_FILE: 'Read',
   READ_FILE: 'Read',
@@ -24,7 +22,16 @@ const STEP_LABELS = {
 };
 const TOOL_STEP = new Set(Object.keys(STEP_LABELS));
 
-function matchProcess(args) {
+interface Conversation {
+  convId: string;
+  mtimeMs: number;
+}
+interface ConvSummary extends Activity {
+  model: string | null;
+  lastTs: number | null;
+}
+
+export function matchProcess(args: string): boolean {
   if (!args) return false;
   const tokens = args.trim().split(/\s+/);
   const base = exeBase(args);
@@ -35,29 +42,28 @@ function matchProcess(args) {
   return false;
 }
 
-function brainRoot() {
+function brainRoot(): string {
   return path.join(os.homedir(), '.gemini', 'antigravity-cli', 'brain');
 }
 
-function transcriptPath(convId) {
+function transcriptPath(convId: string): string {
   return path.join(brainRoot(), convId, '.system_generated', 'logs', 'transcript.jsonl');
 }
 
 // Conversation ids (brain sub-dirs), newest transcript first.
-function listConversations() {
-  let dirs;
+function listConversations(): Conversation[] {
+  let dirs: fs.Dirent[];
   try {
     dirs = fs.readdirSync(brainRoot(), { withFileTypes: true });
-  } catch (e) {
+  } catch {
     return [];
   }
-  const out = [];
+  const out: Conversation[] = [];
   for (const d of dirs) {
     if (!d.isDirectory()) continue;
-    const tp = transcriptPath(d.name);
     try {
-      out.push({ convId: d.name, mtimeMs: fs.statSync(tp).mtimeMs });
-    } catch (e) {
+      out.push({ convId: d.name, mtimeMs: fs.statSync(transcriptPath(d.name)).mtimeMs });
+    } catch {
       /* no transcript yet */
     }
   }
@@ -66,7 +72,7 @@ function listConversations() {
 }
 
 // Derive activity from the last transcript step.
-function summarizeSteps(objs) {
+export function summarizeSteps(objs: Rec[]): Activity {
   const steps = objs.filter((o) => o && o.type);
   const last = steps[steps.length - 1];
   if (!last) return { rawState: 'unknown', detail: '' };
@@ -82,29 +88,26 @@ function summarizeSteps(objs) {
 
 // Pull the human-readable model from the `USER_SETTINGS_CHANGE` line, e.g.
 // "…Model Selection from None to Gemini 3.5 Flash (Medium)." -> "gemini-3.5-flash".
-function modelFrom(objs) {
+export function modelFrom(objs: Rec[]): string | null {
   for (const o of objs) {
     const text = typeof o.content === 'string' ? o.content : '';
     // Capture up to the parenthetical tier, the sentence end, or a newline —
     // but NOT the dot inside a version like "3.5".
     const m = text.match(/Model Selection`?\s+from\s+\S+\s+to\s+(.+?)\s*(?:\(|\.\s|\.$|\n|$)/i);
-    if (m) {
-      return m[1].trim().toLowerCase().replace(/\s+/g, '-');
-    }
+    if (m) return m[1].trim().toLowerCase().replace(/\s+/g, '-');
   }
   return null;
 }
 
-// Summarize a conversation: model + activity + last-activity time. Returns null
-// when the transcript does not belong to `cwd`.
-function summarizeConversation(convId, cwd) {
+// Summarize a conversation; null when the transcript does not belong to `cwd`.
+export function summarizeConversation(convId: string, cwd: string | null): ConvSummary | null {
   const tp = transcriptPath(convId);
   const head = readHeadObjects(tp, 16 * 1024);
   const tail = readTailObjects(tp, 24 * 1024);
   // The transcript references the workspace via file:// / DirectoryPath entries.
   const belongs = cwd && (JSON.stringify(head).includes(cwd) || JSON.stringify(tail).includes(cwd));
   if (!belongs) return null;
-  let lastTs = null;
+  let lastTs: number | null = null;
   for (const o of tail) {
     if (o && o.created_at) {
       const ms = Date.parse(o.created_at);
@@ -114,13 +117,13 @@ function summarizeConversation(convId, cwd) {
   return { model: modelFrom(head), lastTs, ...summarizeSteps(tail) };
 }
 
-function collect(procs) {
+export function collect(procs: Proc[]): PartialAgent[] {
   const conversations = listConversations();
-  const claimed = new Set();
+  const claimed = new Set<string>();
 
   return procs.map((p) => {
-    let s = null;
-    let convId = null;
+    let s: ConvSummary | null = null;
+    let convId: string | null = null;
     if (p.cwd) {
       let scanned = 0;
       for (const c of conversations) {
@@ -156,5 +159,3 @@ function collect(procs) {
     };
   });
 }
-
-module.exports = { name, matchProcess, collect, summarizeSteps, modelFrom, summarizeConversation };

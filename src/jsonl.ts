@@ -1,15 +1,15 @@
-'use strict';
-
-const fs = require('fs');
+import fs from 'node:fs';
+import { Buffer } from 'node:buffer';
+import type { Rec } from './types.ts';
 
 // Parse a chunk of newline-delimited JSON into objects, skipping blank/broken lines.
-function parseLines(text) {
-  const objs = [];
+export function parseLines(text: string): Rec[] {
+  const objs: Rec[] = [];
   for (const line of text.split('\n')) {
     if (!line.trim()) continue;
     try {
       objs.push(JSON.parse(line));
-    } catch (e) {
+    } catch {
       /* skip malformed/truncated line */
     }
   }
@@ -18,8 +18,8 @@ function parseLines(text) {
 
 // Read the last `bytes` of a file and return parsed JSONL objects (dropping a
 // partial leading line). Cheap way to inspect a long transcript's recent tail.
-function readTailObjects(file, bytes = 24 * 1024) {
-  let fd;
+export function readTailObjects(file: string, bytes = 24 * 1024): Rec[] {
+  let fd: number | undefined;
   try {
     fd = fs.openSync(file, 'r');
     const { size } = fs.fstatSync(fd);
@@ -33,13 +33,13 @@ function readTailObjects(file, bytes = 24 * 1024) {
       if (nl !== -1) text = text.slice(nl + 1); // drop partial leading line
     }
     return parseLines(text);
-  } catch (e) {
+  } catch {
     return [];
   } finally {
     if (fd !== undefined) {
       try {
         fs.closeSync(fd);
-      } catch (e) {
+      } catch {
         /* ignore */
       }
     }
@@ -48,8 +48,8 @@ function readTailObjects(file, bytes = 24 * 1024) {
 
 // Read the first `bytes` of a file and return parsed JSONL objects (dropping a
 // partial trailing line). Used to read a session's leading metadata cheaply.
-function readHeadObjects(file, bytes = 8 * 1024) {
-  let fd;
+export function readHeadObjects(file: string, bytes = 8 * 1024): Rec[] {
+  let fd: number | undefined;
   try {
     fd = fs.openSync(file, 'r');
     const { size } = fs.fstatSync(fd);
@@ -62,17 +62,15 @@ function readHeadObjects(file, bytes = 8 * 1024) {
       if (nl !== -1) text = text.slice(0, nl); // drop partial trailing line
     }
     return parseLines(text);
-  } catch (e) {
+  } catch {
     return [];
   } finally {
     if (fd !== undefined) {
       try {
         fs.closeSync(fd);
-      } catch (e) {
+      } catch {
         /* ignore */
       }
     }
   }
 }
-
-module.exports = { readTailObjects, readHeadObjects, parseLines };

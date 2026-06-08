@@ -1,8 +1,12 @@
-echo "▶ lint-staged (prettier + eslint)"
-npx lint-staged || exit 1
+echo "▶ deno fmt --check"
+deno fmt --check || exit 1
 
-echo "▶ typecheck (tsc --noEmit)"
-npm run typecheck || exit 1
+echo "▶ deno lint"
+deno lint || exit 1
 
-echo "▶ unit tests (node --test)"
-npm test || exit 1
+echo "▶ deno check + test"
+deno check main.ts || exit 1
+deno test -A || exit 1
+
+echo "▶ tsc build (npm dist)"
+npm run build || exit 1

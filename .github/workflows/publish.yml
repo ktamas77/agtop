@@ -5,22 +5,41 @@ on:
     types: [published]
 
 jobs:
-  publish:
+  # Publish to npm via OIDC Trusted Publishing (provenance-signed). The tsc build
+  # runs automatically via the package's prepublishOnly hook.
+  npm:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write # required for npm OIDC Trusted Publishing
+      id-token: write
     steps:
       - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           registry-url: https://registry.npmjs.org
           cache: npm
       - run: npm ci
-      - run: npm test
-      # Trusted Publishing (OIDC) needs npm >= 11.5.1; Node 20 ships an older npm.
+      - run: deno test -A
+      # Trusted Publishing (OIDC) needs npm >= 11.5.1.
       - run: npm install -g npm@latest
-      # No NODE_AUTH_TOKEN: npm authenticates via the OIDC trusted publisher
-      # configured on npmjs.com, and generates provenance automatically.
       - run: npm publish --access public
+
+  # Publish the Deno-native package to JSR via OIDC. Requires the @ktamas77 scope
+  # and the agentop package to exist on jsr.io (one-time setup). continue-on-error
+  # so it never blocks the npm release if JSR isn't configured yet.
+  jsr:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno publish

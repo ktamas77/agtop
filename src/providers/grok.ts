@@ -1,16 +1,15 @@
-'use strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { readTailObjects } from '../jsonl.ts';
+import { gitBranch as gitBranchOf } from '../state.ts';
+import { exeBase } from '../processes.ts';
+import type { Activity, PartialAgent, Proc, Rec } from '../types.ts';
 
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const { readTailObjects } = require('../jsonl');
-const { gitBranch: gitBranchOf } = require('../state');
-const { exeBase } = require('../processes');
-
-const name = 'grok';
+export const name = 'grok' as const;
 
 // Friendly labels for Grok's tool names (mirrors how Claude tools read).
-const TOOL_LABELS = {
+const TOOL_LABELS: Record<string, string> = {
   run_terminal_command: 'Shell',
   edit_file: 'Edit',
   str_replace_editor: 'Edit',
@@ -19,10 +18,21 @@ const TOOL_LABELS = {
   view_file: 'Read',
   web_search: 'WebSearch',
 };
-const label = (n) => TOOL_LABELS[n] || n || 'tool';
+const label = (n: string | null | undefined) => (n && TOOL_LABELS[n]) || n || 'tool';
+
+interface SessionDir {
+  dir: string;
+  mtimeMs: number;
+}
+interface SessionSummary extends Activity {
+  model: string | null;
+  lastTs: number | null;
+  sessionId: string | null;
+  lastPrompt: string | null;
+}
 
 // Is this command line an xAI Grok CLI session?
-function matchProcess(args) {
+export function matchProcess(args: string): boolean {
   if (!args) return false;
   const tokens = args.trim().split(/\s+/);
   const base = exeBase(args);
@@ -36,28 +46,27 @@ function matchProcess(args) {
   return false;
 }
 
-function sessionsRoot() {
+function sessionsRoot(): string {
   return path.join(os.homedir(), '.grok', 'sessions');
 }
 
-// Grok stores one directory per cwd: ~/.grok/sessions/<encodeURIComponent(cwd)>/
-// containing a sub-directory per session id. Newest session sub-dir first.
-function listSessions(cwd) {
+// ~/.grok/sessions/<encodeURIComponent(cwd)>/<session-id>/ — newest sub-dir first.
+function listSessions(cwd: string): SessionDir[] {
   const dir = path.join(sessionsRoot(), encodeURIComponent(cwd));
-  let subs;
+  let subs: fs.Dirent[];
   try {
     subs = fs.readdirSync(dir, { withFileTypes: true });
-  } catch (e) {
+  } catch {
     return [];
   }
-  const out = [];
+  const out: SessionDir[] = [];
   for (const d of subs) {
     if (!d.isDirectory()) continue;
     const full = path.join(dir, d.name);
     let m = 0;
     try {
       m = fs.statSync(full).mtimeMs;
-    } catch (e) {
+    } catch {
       /* skip */
     }
     out.push({ dir: full, mtimeMs: m });
@@ -67,13 +76,13 @@ function listSessions(cwd) {
 }
 
 // Derive activity from a session's events.jsonl tail (turn / phase / tool events).
-function summarizeEvents(events) {
+export function summarizeEvents(events: Rec[]): Activity {
   const last = events[events.length - 1];
   if (!last) return { rawState: 'unknown', detail: '' };
   if (last.type === 'turn_ended') return { rawState: 'replied', detail: '' };
 
-  let phase = null;
-  let tool = null;
+  let phase: string | null = null;
+  let tool: string | null = null;
   for (const e of events) {
     if (e.type === 'phase_changed' && e.phase) phase = e.phase;
     if (e.type === 'tool_started') tool = e.tool_name;
@@ -85,18 +94,18 @@ function summarizeEvents(events) {
 }
 
 // Read a session sub-directory's summary.json + events.jsonl tail.
-function summarizeSession(sessionDir) {
-  let model = null;
-  let lastTs = null;
-  let sessionId = null;
-  let lastPrompt = null;
+export function summarizeSession(sessionDir: string): SessionSummary {
+  let model: string | null = null;
+  let lastTs: number | null = null;
+  let sessionId: string | null = null;
+  let lastPrompt: string | null = null;
   try {
     const s = JSON.parse(fs.readFileSync(path.join(sessionDir, 'summary.json'), 'utf8'));
     model = s.current_model_id || null;
     lastTs = s.updated_at ? Date.parse(s.updated_at) : null;
     sessionId = (s.info && s.info.id) || null;
     lastPrompt = s.session_summary || null;
-  } catch (e) {
+  } catch {
     /* no/invalid summary */
   }
   const events = readTailObjects(path.join(sessionDir, 'events.jsonl'), 16 * 1024);
@@ -108,18 +117,18 @@ function summarizeSession(sessionDir) {
 }
 
 // Join matched Grok processes to their session directories (by working dir).
-function collect(procs) {
-  const poolByCwd = new Map();
-  const pool = (cwd) => {
+export function collect(procs: Proc[]): PartialAgent[] {
+  const poolByCwd = new Map<string, SessionDir[]>();
+  const pool = (cwd: string) => {
     if (!poolByCwd.has(cwd)) poolByCwd.set(cwd, listSessions(cwd));
-    return poolByCwd.get(cwd);
+    return poolByCwd.get(cwd)!;
   };
 
   return procs.map((p) => {
-    let s = null;
+    let s: SessionSummary | null = null;
     if (p.cwd) {
       const sessions = pool(p.cwd);
-      if (sessions.length) s = summarizeSession(sessions.shift().dir);
+      if (sessions.length) s = summarizeSession(sessions.shift()!.dir);
     }
     return {
       agent: name,
@@ -141,5 +150,3 @@ function collect(procs) {
     };
   });
 }
-
-module.exports = { name, matchProcess, collect, summarizeEvents, summarizeSession };
