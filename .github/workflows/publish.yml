@@ -44,4 +44,5 @@ jobs:
           deno-version: v2.x
       # deno publish runs a type check that needs node_modules for @types/node.
       - run: deno install
-      - run: deno publish
+      # --allow-dirty: `deno install` writes a deno.lock that's not committed.
+      - run: deno publish --allow-dirty

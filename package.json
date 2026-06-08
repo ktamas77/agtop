@@ -1,6 +1,6 @@
 {
   "name": "agentop",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "top, but for your running coding agents — a live terminal dashboard of every Claude Code, OpenAI Codex, xAI Grok, Google Gemini, and Antigravity CLI session on your machine.",
   "keywords": [
     "claude",

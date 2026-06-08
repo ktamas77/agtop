@@ -4,6 +4,13 @@ All notable changes to **agentop** are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.2] — 2026-06-08
+
+### Fixed
+
+- JSR publish: pass `--allow-dirty` so the generated `deno.lock` no longer
+  aborts the OIDC publish. First automated JSR release.
+
 ## [0.5.1] — 2026-06-08
 
 ### Added
@@ -95,6 +102,7 @@ All notable changes to **agentop** are documented here. The format is based on
 - Initial release — a `top`-style live terminal dashboard for running Claude
   Code CLI agents. Zero runtime dependencies; macOS/Linux.
 
+[0.5.2]: https://github.com/ktamas77/agentop/releases/tag/v0.5.2
 [0.5.1]: https://github.com/ktamas77/agentop/releases/tag/v0.5.1
 [0.5.0]: https://github.com/ktamas77/agentop/releases/tag/v0.5.0
 [0.4.0]: https://github.com/ktamas77/agentop/releases/tag/v0.4.0
