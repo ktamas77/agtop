@@ -46,3 +46,14 @@ jobs:
       - run: deno install
       # --allow-dirty: `deno install` writes a deno.lock that's not committed.
       - run: deno publish --allow-dirty
+
+  # Cross-compile standalone binaries and attach them to the release. ADDITIVE:
+  # no `needs:` couples this to npm/jsr, so a binary-build failure can never block
+  # or break package publishing. Delegates to the reusable build-binaries workflow,
+  # passing the release tag so it uploads the assets to this release.
+  binaries:
+    permissions:
+      contents: write
+    uses: ./.github/workflows/build-binaries.yml
+    with:
+      release_tag: ${{ github.event.release.tag_name }}

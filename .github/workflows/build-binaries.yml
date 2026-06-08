@@ -1,0 +1,73 @@
+name: Build Binaries
+
+# Reusable, self-contained binary builder. Cross-compiles all four supported
+# unix targets from a single Linux runner via `deno task compile <triple>`
+# (Deno cross-compiles macOS targets from Linux), emits a SHA-256 checksum per
+# artifact, and uploads them as workflow artifacts. When given a `release_tag`
+# it also attaches the binaries + checksums to that GitHub Release.
+#
+# Invoked two ways:
+#   - workflow_call  — from publish.yml on a published release (passes the tag)
+#   - workflow_dispatch — manually, for verification (tag optional)
+
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: Tag of the GitHub Release to upload binaries to (optional)
+        required: false
+        type: string
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Optional release tag to upload binaries to
+        required: false
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # required to upload assets to a release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      # `deno task compile` type-checks main.ts, which needs @types/node from
+      # node_modules — install before compiling (same as ci.yml / publish.yml).
+      - run: deno install
+      - name: Cross-compile all targets
+        run: |
+          set -euo pipefail
+          for target in \
+            x86_64-unknown-linux-gnu \
+            aarch64-unknown-linux-gnu \
+            x86_64-apple-darwin \
+            aarch64-apple-darwin; do
+            echo "::group::compile $target"
+            deno task compile "$target"
+            echo "::endgroup::"
+          done
+      - name: Generate SHA-256 checksums
+        working-directory: dist-bin
+        run: |
+          set -euo pipefail
+          for f in agentop-*; do
+            shasum -a 256 "$f" > "$f.sha256"
+          done
+          ls -la
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentop-binaries
+          path: dist-bin/*
+          if-no-files-found: error
+      - name: Attach binaries to release
+        if: ${{ inputs.release_tag != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release upload "${{ inputs.release_tag }}" \
+            dist-bin/agentop-* --clobber

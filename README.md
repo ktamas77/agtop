@@ -44,6 +44,27 @@ deno run -A jsr:@ktamas77/agentop          # run it
 deno install -gA -n agentop jsr:@ktamas77/agentop   # install the command
 ```
 
+…or as a **standalone binary** — no Node, no Deno, no runtime to install. One line
+downloads the right build for your machine from the latest GitHub release, verifies
+its checksum, and drops it on your `PATH`:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/ktamas77/agentop/main/install.sh | sh
+```
+
+Supports Linux and macOS on both x86_64 and arm64. The installer picks the matching
+build via `uname`, verifies a SHA-256 checksum before installing, and installs to
+`/usr/local/bin` (or `~/.local/bin` if that isn't writable — override with
+`AGENTOP_INSTALL_DIR`). Pin a version with `AGENTOP_VERSION=vX.Y.Z`. Prefer a package
+manager? The npm, Homebrew, and Deno options above are all equivalent — the binary is
+just the dependency-free option.
+
+> **macOS note.** The binaries are not yet code-signed, so a manually downloaded build
+> may be quarantined by Gatekeeper ("cannot be opened"). The `install.sh` one-liner
+> clears this for you automatically; if you download a binary by hand, run
+> `xattr -d com.apple.quarantine ./agentop` once. Each binary is ~137 MB — it embeds the
+> Deno runtime, which is what makes it dependency-free.
+
 Want to see it without any agents running? Try the demo:
 
 ```sh
@@ -147,7 +168,12 @@ deno fmt && deno lint    # format + lint
 deno check main.ts       # type-check
 npm run build            # tsc -> dist/ (the npm artifact)
 npm run check            # fmt + lint + check + test + build (what CI runs)
+deno task compile        # standalone binary -> dist-bin/agentop (host)
+deno task compile aarch64-apple-darwin   # cross-compile a specific target
 ```
+
+Cutting a release (tagging, the binary build, and publishing to npm + JSR) is
+documented in [RELEASING.md](RELEASING.md).
 
 `src/*.ts` is the shared, typed core (one `src/providers/<name>.ts` per agent
 framework). Entry points: `bin/agentop.js` (npm, over the built `dist/`) and
