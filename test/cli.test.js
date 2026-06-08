@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const { execFileSync } = require('node:child_process');
 const path = require('node:path');
 
-const BIN = path.join(__dirname, '..', 'bin', 'agtop.js');
+const BIN = path.join(__dirname, '..', 'bin', 'agentop.js');
 const pkg = require('../package.json');
 
 function run(args, opts = {}) {
@@ -17,13 +17,13 @@ function run(args, opts = {}) {
 }
 
 test('--version prints the package version', () => {
-  assert.equal(run(['--version']).trim(), `agtop ${pkg.version}`);
+  assert.equal(run(['--version']).trim(), `agentop ${pkg.version}`);
 });
 
 test('--help documents usage and options', () => {
   const out = run(['--help']);
   assert.match(out, /USAGE/);
-  assert.match(out, /agtop \[options\]/);
+  assert.match(out, /agentop \[options\]/);
   assert.match(out, /--json/);
   assert.match(out, /--interval/);
 });
@@ -40,7 +40,7 @@ test('--json emits valid, well-formed JSON', () => {
 
 test('--once prints a single snapshot frame with headers', () => {
   const out = run(['--once', '--no-color']);
-  assert.match(out, /agtop/);
+  assert.match(out, /agentop/);
   assert.match(out, /PROJECT/);
   assert.match(out, /running/);
 });

@@ -27,7 +27,7 @@ function parseArgs(argv) {
         break;
       case '-v':
       case '--version':
-        process.stdout.write(`agtop ${pkg.version}\n`);
+        process.stdout.write(`agentop ${pkg.version}\n`);
         process.exit(0);
         break;
       case '-n':
@@ -67,16 +67,16 @@ function parseArgs(argv) {
 }
 
 function fail(msg) {
-  process.stderr.write(`agtop: ${msg}\n`);
-  process.stderr.write(`Try 'agtop --help'.\n`);
+  process.stderr.write(`agentop: ${msg}\n`);
+  process.stderr.write(`Try 'agentop --help'.\n`);
   process.exit(2);
 }
 
 function printHelp() {
-  process.stdout.write(`agtop — top, but for your running Claude Code agents
+  process.stdout.write(`agentop — top, but for your running Claude Code agents
 
 USAGE
-  agtop [options]
+  agentop [options]
 
 OPTIONS
   -d, --interval <sec>   Refresh interval in seconds (default: 2)

@@ -12,7 +12,7 @@ const sample = (over = {}) => ({
   cpu: 3.2,
   rssKb: 540000,
   uptimeSec: 419,
-  project: 'agtop',
+  project: 'agentop',
   gitBranch: 'main',
   model: 'claude-opus-4-8',
   idleSec: 5,
@@ -68,9 +68,9 @@ test('sortAgents treats missing idle as last', () => {
 
 test('buildFrame includes title, headers, and the agent row', () => {
   const frame = buildFrame([sample()], opts());
-  assert.match(frame, /agtop/);
+  assert.match(frame, /agentop/);
   assert.match(frame, /PROJECT/);
-  assert.match(frame, /agtop/);
+  assert.match(frame, /agentop/);
   assert.match(frame, /1 agent running/);
   assert.match(frame, /Bash/);
 });

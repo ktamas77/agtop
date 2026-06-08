@@ -1,5 +1,5 @@
 {
-  "name": "agtop",
+  "name": "agentop",
   "version": "0.1.0",
   "description": "top, but for your running Claude Code agents — a live terminal dashboard of every Claude CLI session on your machine.",
   "keywords": [
@@ -14,19 +14,19 @@
     "dashboard",
     "anthropic"
   ],
-  "homepage": "https://github.com/ktamas77/agtop#readme",
+  "homepage": "https://github.com/ktamas77/agentop#readme",
   "bugs": {
-    "url": "https://github.com/ktamas77/agtop/issues"
+    "url": "https://github.com/ktamas77/agentop/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ktamas77/agtop.git"
+    "url": "git+https://github.com/ktamas77/agentop.git"
   },
   "license": "MIT",
   "author": "Tamas Kalman",
   "type": "commonjs",
   "bin": {
-    "agtop": "bin/agtop.js"
+    "agentop": "bin/agentop.js"
   },
   "files": [
     "bin/",
@@ -35,7 +35,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "start": "node bin/agtop.js",
+    "start": "node bin/agentop.js",
     "test": "node --test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

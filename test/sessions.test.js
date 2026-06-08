@@ -74,7 +74,7 @@ test('summarizeSession is safe on empty input', () => {
 });
 
 test('readTailObjects parses JSONL and drops a partial leading line', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agtop-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentop-'));
   const file = path.join(dir, 's.jsonl');
   try {
     const lines = [];

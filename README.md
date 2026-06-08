@@ -1,7 +1,7 @@
-# agtop
+# agentop
 
-[![npm version](https://img.shields.io/npm/v/agtop.svg)](https://www.npmjs.com/package/agtop)
-[![CI](https://github.com/ktamas77/agtop/actions/workflows/ci.yml/badge.svg)](https://github.com/ktamas77/agtop/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/agentop.svg)](https://www.npmjs.com/package/agentop)
+[![CI](https://github.com/ktamas77/agentop/actions/workflows/ci.yml/badge.svg)](https://github.com/ktamas77/agentop/actions/workflows/ci.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 > `top`, but for your running **Claude Code agents**.
@@ -12,21 +12,21 @@ which projects have agents working, what model they're on, which git branch
 they're on, and what each one is doing *right now* (running a tool, thinking,
 or waiting for you).
 
-![agtop in action](docs/screenshot.png)
+![agentop in action](docs/screenshot.png)
 
 ## Usage
 
 No install needed — run it with `npx`:
 
 ```sh
-npx agtop
+npx agentop
 ```
 
 Or install globally:
 
 ```sh
-npm install -g agtop
-agtop
+npm install -g agentop
+agentop
 ```
 
 ### Live keys
@@ -51,11 +51,11 @@ agtop
 -v, --version          Show version
 ```
 
-`--once` and `--json` make `agtop` scriptable:
+`--once` and `--json` make `agentop` scriptable:
 
 ```sh
-agtop --json | jq '.[] | select(.state == "working") | .project'
-watch -n5 'agtop --once'
+agentop --json | jq '.[] | select(.state == "working") | .project'
+watch -n5 'agentop --once'
 ```
 
 ## Columns
@@ -75,7 +75,7 @@ watch -n5 'agtop --once'
 
 ## How it works
 
-`agtop` reads only local state — nothing is sent anywhere:
+`agentop` reads only local state — nothing is sent anywhere:
 
 1. It lists running **`claude` CLI processes** with `ps` (the desktop app and
    its helpers are filtered out), and resolves each one's working directory
