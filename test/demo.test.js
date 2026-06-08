@@ -14,16 +14,15 @@ test('demoAgents returns a stable set of well-formed records', () => {
     assert.equal(typeof a.cpu, 'number');
     assert.ok(a.cpu >= 0);
     assert.ok('state' in a && 'rawState' in a && 'idleSec' in a);
-    assert.ok(['claude', 'codex', 'grok'].includes(a.agent));
+    assert.ok(['claude', 'codex', 'grok', 'gemini', 'agy'].includes(a.agent));
   }
 });
 
-test('demoAgents includes claude, codex, and grok agents', () => {
+test('demoAgents includes all supported agent frameworks', () => {
   const agents = demoAgents(1_700_000_000_000);
   const kinds = new Set(agents.map((a) => a.agent));
-  assert.ok(kinds.has('claude'));
-  assert.ok(kinds.has('codex'));
-  assert.ok(kinds.has('grok'));
+  for (const k of ['claude', 'codex', 'grok', 'gemini', 'agy'])
+    assert.ok(kinds.has(k), `missing ${k}`);
 });
 
 test('demoAgents is deterministic for a fixed timestamp', () => {

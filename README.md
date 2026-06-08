@@ -4,14 +4,14 @@
 [![CI](https://github.com/ktamas77/agentop/actions/workflows/ci.yml/badge.svg)](https://github.com/ktamas77/agentop/actions/workflows/ci.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-> `top`, but for your running **coding agents** — Claude Code, Codex, and Grok.
+> `top`, but for your running **coding agents** — Claude Code, Codex, Grok, Gemini, and Antigravity.
 
 A zero-dependency terminal dashboard that shows every `claude` (Claude Code),
-`codex` (OpenAI Codex), and `grok` (xAI Grok) CLI session running on your
-machine — live, refreshing like `top`/`htop`. See at a glance which projects
-have agents working, what framework and model they're on, which git branch
-they're on, and what each one is doing *right now* (running a tool, thinking,
-or waiting for you).
+`codex` (OpenAI Codex), `grok` (xAI Grok), `gemini` (Google Gemini), and `agy`
+(Google Antigravity) CLI session running on your machine — live, refreshing like
+`top`/`htop`. See at a glance which projects have agents working, what framework
+and model they're on, which git branch they're on, and what each one is doing
+*right now* (running a tool, thinking, or waiting for you).
 
 ![agentop in action](https://raw.githubusercontent.com/ktamas77/agentop/main/docs/demo.gif)
 
@@ -71,8 +71,8 @@ watch -n5 'agentop --once'
 | Column | Meaning |
 |--------|---------|
 | **PID** | OS process id of the agent's CLI session |
-| **AGENT** | Which framework — `claude`, `codex`, or `grok` |
-| **MODEL** | Model the session is using (e.g. `opus-4-8`, `gpt-5.5`, `grok-4`) |
+| **AGENT** | Which framework — `claude`, `codex`, `grok`, `gemini`, or `agy` |
+| **MODEL** | Model the session is using (e.g. `opus-4-8`, `gpt-5.5`, `grok-4`, `gemini-3-flash`) |
 | **PROJECT** | Working directory basename of the agent |
 | **BRANCH** | Git branch the session is on |
 | **STATE** | `working` (running a tool) · `thinking` · `replied` · `waiting` · `idle` · `stalled` |
@@ -86,17 +86,22 @@ watch -n5 'agentop --once'
 
 `agentop` reads only local state — nothing is sent anywhere:
 
-1. It lists running **`claude`, `codex`, and `grok` CLI processes** with `ps`
-   (desktop apps and helpers are filtered out), and resolves each one's working
-   directory via `/proc` on Linux or `lsof` on macOS.
+1. It lists running **`claude`, `codex`, `grok`, `gemini`, and `agy` CLI
+   processes** with `ps` (desktop apps, helpers, and launcher shims are filtered
+   out), and resolves each one's working directory via `/proc` on Linux or
+   `lsof` on macOS.
 2. It joins each process to its **session** by working directory:
    - **Claude Code** → the transcript under
      `~/.claude/projects/<encoded-cwd>/<session>.jsonl` (reads just the tail).
    - **Codex** → the `threads` table in `~/.codex/state_*.sqlite` (read via the
-     system `sqlite3` binary — still zero npm deps), with activity enriched from
-     the thread's rollout file when present.
-   - **Grok** → the session under `~/.grok/sessions/<encoded-cwd>/<id>/`
-     (`summary.json` for the model, `events.jsonl` for the current phase).
+     system `sqlite3` binary — still zero npm deps), with activity from the
+     thread's rollout file when present.
+   - **Grok** → `~/.grok/sessions/<encoded-cwd>/<id>/` (`summary.json` for the
+     model, `events.jsonl` for the current phase).
+   - **Gemini** → `~/.gemini/tmp/<project>/chats/session-*.jsonl`.
+   - **Antigravity** → the readable transcript in
+     `~/.gemini/antigravity-cli/brain/<id>/…/transcript.jsonl`, matched to the
+     workspace it references.
 3. From each it extracts the model, git branch, version, last-activity time, and
    the current tool call, and renders it all as a `top`-style table.
 

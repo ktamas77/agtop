@@ -12,6 +12,9 @@ test('shortModel strips claude- prefix, date stamp, and [1m] suffix', () => {
   assert.equal(shortModel('claude-sonnet-4-6'), 'sonnet-4-6');
   assert.equal(shortModel('claude-haiku-4-5-20251001'), 'haiku-4-5');
   assert.equal(shortModel('claude-opus-4-8[1m]'), 'opus-4-8');
+  assert.equal(shortModel('gemini-3-flash-preview'), 'gemini-3-flash');
+  assert.equal(shortModel('grok-build'), 'grok-build');
+  assert.equal(shortModel('gpt-5.5'), 'gpt-5.5');
   assert.equal(shortModel(null), '?');
   assert.equal(shortModel(undefined), '?');
 });

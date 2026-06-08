@@ -9,6 +9,8 @@ const { readTailObjects, readHeadObjects } = require('../lib/jsonl');
 const claude = require('../lib/providers/claude');
 const codex = require('../lib/providers/codex');
 const grok = require('../lib/providers/grok');
+const gemini = require('../lib/providers/gemini');
+const agy = require('../lib/providers/agy');
 
 // ---- shared jsonl helpers ----
 
@@ -265,5 +267,163 @@ test('grok.summarizeSession falls back to last event ts when summary lacks updat
     assert.equal(s.rawState, 'replied');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ---- gemini provider ----
+
+test('gemini.matchProcess matches `node …/gemini` and the bare binary', () => {
+  assert.equal(gemini.matchProcess('node /Users/me/.nvm/versions/node/v24.1.0/bin/gemini'), true);
+  assert.equal(gemini.matchProcess('/path/node --max-old-space-size=32768 /path/bin/gemini'), true);
+  assert.equal(gemini.matchProcess('gemini'), true);
+  assert.equal(gemini.matchProcess('claude'), false);
+  assert.equal(gemini.matchProcess('node server.js'), false);
+});
+
+test('gemini.deriveActivity: tool call vs reply vs user', () => {
+  const tool = gemini.deriveActivity([
+    { type: 'gemini', content: '', toolCalls: [{ name: 'run_shell_command' }] },
+  ]);
+  assert.equal(tool.rawState, 'tool');
+  assert.equal(tool.detail, 'Shell');
+
+  const replied = gemini.deriveActivity([
+    { type: 'gemini', content: 'Here is what I found\nmore' },
+  ]);
+  assert.equal(replied.rawState, 'replied');
+  assert.equal(replied.detail, 'Here is what I found');
+
+  const thinking = gemini.deriveActivity([{ type: 'user', content: 'hello' }]);
+  assert.equal(thinking.rawState, 'thinking');
+
+  assert.equal(gemini.deriveActivity([]).rawState, 'unknown');
+});
+
+test('gemini.summarize reads model + activity + newest timestamp from a chat file', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentop-gemini-'));
+  const file = path.join(dir, 'session-x.jsonl');
+  try {
+    fs.writeFileSync(
+      file,
+      [
+        JSON.stringify({
+          sessionId: 'sess-9',
+          startTime: '2026-06-08T09:30:00.000Z',
+          kind: 'main',
+        }),
+        JSON.stringify({ type: 'user', message: 'analyze', timestamp: '2026-06-08T09:31:00.000Z' }),
+        JSON.stringify({
+          type: 'gemini',
+          content: '',
+          model: 'gemini-3-flash-preview',
+          toolCalls: [{ name: 'read_file' }],
+          timestamp: '2026-06-08T09:31:05.000Z',
+        }),
+        JSON.stringify({ $set: { lastUpdated: '2026-06-08T09:31:09.000Z' } }),
+      ].join('\n') + '\n',
+    );
+    const s = gemini.summarize(file);
+    assert.equal(s.model, 'gemini-3-flash-preview');
+    assert.equal(s.sessionId, 'sess-9');
+    assert.equal(s.rawState, 'tool');
+    assert.equal(s.detail, 'Read');
+    assert.equal(s.lastTs, Date.parse('2026-06-08T09:31:09.000Z')); // newest across messages + $set
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ---- agy (Google Antigravity) provider ----
+
+test('agy.matchProcess matches the agy CLI only', () => {
+  assert.equal(agy.matchProcess('agy'), true);
+  assert.equal(agy.matchProcess('/Users/me/.local/bin/agy'), true);
+  assert.equal(agy.matchProcess('node /path/bin/agy'), true);
+  assert.equal(agy.matchProcess('claude'), false);
+  assert.equal(agy.matchProcess('gemini'), false);
+  assert.equal(agy.matchProcess('node server.js'), false);
+});
+
+test('agy.summarizeSteps maps transcript step types to state', () => {
+  assert.equal(agy.summarizeSteps([{ type: 'USER_INPUT' }]).rawState, 'thinking');
+
+  const replied = agy.summarizeSteps([
+    { type: 'PLANNER_RESPONSE', status: 'DONE', content: 'All done.\nmore' },
+  ]);
+  assert.equal(replied.rawState, 'replied');
+  assert.equal(replied.detail, 'All done.');
+
+  assert.equal(
+    agy.summarizeSteps([{ type: 'PLANNER_RESPONSE', status: 'RUNNING' }]).rawState,
+    'thinking',
+  );
+
+  const tool = agy.summarizeSteps([{ type: 'LIST_DIRECTORY', status: 'DONE' }]);
+  assert.equal(tool.rawState, 'tool');
+  assert.equal(tool.detail, 'List');
+
+  assert.equal(agy.summarizeSteps([{ type: 'VIEW_FILE' }]).detail, 'Read');
+  assert.equal(agy.summarizeSteps([]).rawState, 'unknown');
+});
+
+test('agy.modelFrom extracts the model from a settings-change line (keeps version dots)', () => {
+  const objs = [
+    {
+      type: 'USER_INPUT',
+      content:
+        '<USER_SETTINGS_CHANGE>\nThe user changed setting `Model Selection` from None to Gemini 3.5 Flash (Medium). No need to comment.\n</USER_SETTINGS_CHANGE>',
+    },
+  ];
+  assert.equal(agy.modelFrom(objs), 'gemini-3.5-flash');
+  assert.equal(agy.modelFrom([{ type: 'USER_INPUT', content: 'no model here' }]), null);
+});
+
+test('agy.summarizeConversation only matches a transcript that references the cwd', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'agentop-agy-'));
+  const convDir = path.join(root, 'conv-1', '.system_generated', 'logs');
+  fs.mkdirSync(convDir, { recursive: true });
+  const tp = path.join(convDir, 'transcript.jsonl');
+  // Point the provider at our temp brain root.
+  const orig = os.homedir;
+  os.homedir = () => root;
+  // brainRoot() = <root>/.gemini/antigravity-cli/brain — so place the conv there.
+  const brain = path.join(
+    root,
+    '.gemini',
+    'antigravity-cli',
+    'brain',
+    'conv-1',
+    '.system_generated',
+    'logs',
+  );
+  fs.mkdirSync(brain, { recursive: true });
+  const realTp = path.join(brain, 'transcript.jsonl');
+  try {
+    fs.writeFileSync(
+      realTp,
+      [
+        JSON.stringify({
+          type: 'USER_INPUT',
+          created_at: '2026-06-08T09:38:00Z',
+          content: 'Model Selection from None to Gemini 3.5 Flash (Medium). file:///work/proj',
+        }),
+        JSON.stringify({
+          type: 'PLANNER_RESPONSE',
+          status: 'DONE',
+          created_at: '2026-06-08T09:39:00Z',
+          content: 'Done.',
+        }),
+      ].join('\n') + '\n',
+    );
+    const hit = agy.summarizeConversation('conv-1', '/work/proj');
+    assert.ok(hit);
+    assert.equal(hit.model, 'gemini-3.5-flash');
+    assert.equal(hit.rawState, 'replied');
+    assert.equal(hit.lastTs, Date.parse('2026-06-08T09:39:00Z'));
+    assert.equal(agy.summarizeConversation('conv-1', '/some/other/dir'), null);
+  } finally {
+    os.homedir = orig;
+    fs.rmSync(root, { recursive: true, force: true });
+    void tp;
   }
 });

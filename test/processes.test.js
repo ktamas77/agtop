@@ -18,6 +18,8 @@ test('listAllProcesses returns well-formed records', () => {
   for (const p of procs.slice(0, 50)) {
     assert.equal(typeof p.pid, 'number');
     assert.ok(Number.isInteger(p.pid) && p.pid > 0);
+    assert.equal(typeof p.ppid, 'number');
+    assert.ok(Number.isInteger(p.ppid) && p.ppid >= 0);
     assert.equal(typeof p.cpu, 'number');
     assert.equal(typeof p.rssKb, 'number');
     assert.equal(typeof p.uptimeSec, 'number');

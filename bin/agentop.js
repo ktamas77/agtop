@@ -78,7 +78,8 @@ function fail(msg) {
 }
 
 function printHelp() {
-  process.stdout.write(`agentop — top, but for your running coding agents (Claude Code, Codex, Grok)
+  process.stdout
+    .write(`agentop — top, but for your running coding agents (Claude, Codex, Grok, Gemini, Antigravity)
 
 USAGE
   agentop [options]
@@ -102,10 +103,11 @@ LIVE KEYS
   +/-                    Increase / decrease refresh interval
 
 WHAT IT SHOWS
-  Every running 'claude' (Claude Code), 'codex' (OpenAI Codex), and
-  'grok' (xAI Grok) CLI session on this machine, joined to its project,
-  git branch, model, and current activity — read live from local session
-  state under ~/.claude, ~/.codex, and ~/.grok.
+  Every running 'claude' (Claude Code), 'codex' (OpenAI Codex), 'grok'
+  (xAI Grok), 'gemini' (Google Gemini), and 'agy' (Google Antigravity)
+  CLI session on this machine, joined to its project, git branch, model,
+  and current activity — read live from local session state under
+  ~/.claude, ~/.codex, ~/.grok, and ~/.gemini.
 `);
 }
 
