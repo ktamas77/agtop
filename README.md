@@ -12,7 +12,7 @@ which projects have agents working, what model they're on, which git branch
 they're on, and what each one is doing *right now* (running a tool, thinking,
 or waiting for you).
 
-![agentop in action](docs/screenshot.png)
+![agentop in action](https://raw.githubusercontent.com/ktamas77/agentop/main/docs/demo.gif)
 
 ## Usage
 
@@ -27,6 +27,12 @@ Or install globally:
 ```sh
 npm install -g agentop
 agentop
+```
+
+Want to see it without any agents running? Try the demo:
+
+```sh
+npx agentop --demo
 ```
 
 ### Live keys
@@ -46,6 +52,7 @@ agentop
 -r, --reverse          Reverse sort order
 -n, --once             Print a single snapshot and exit (no live UI)
     --json             Print agents as JSON and exit
+    --demo             Show fabricated sample agents (no real data)
     --no-color         Disable ANSI colors
 -h, --help             Show help
 -v, --version          Show version

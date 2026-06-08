@@ -2,6 +2,7 @@
 'use strict';
 
 const { collectAgents } = require('../lib/collect');
+const { demoAgents } = require('../lib/demo');
 const { buildFrame, sortAgents, SORTS } = require('../lib/render');
 const { runLive } = require('../lib/ui');
 const c = require('../lib/colors');
@@ -14,6 +15,7 @@ function parseArgs(argv) {
     reverse: false,
     once: false,
     json: false,
+    demo: false,
     color: undefined,
   };
   const args = argv.slice(2);
@@ -59,6 +61,9 @@ function parseArgs(argv) {
       case '--reverse':
         opts.reverse = true;
         break;
+      case '--demo':
+        opts.demo = true;
+        break;
       default:
         fail(`unknown option: ${a}`);
     }
@@ -84,6 +89,8 @@ OPTIONS
   -r, --reverse          Reverse sort order
   -n, --once             Print a single snapshot and exit (no live UI)
       --json             Print agents as JSON and exit
+      --demo             Show fabricated sample agents (no real data) — handy
+                         for previews, screenshots, and demos
       --no-color         Disable ANSI colors
   -h, --help             Show this help
   -v, --version          Show version
@@ -104,15 +111,16 @@ WHAT IT SHOWS
 function main() {
   const opts = parseArgs(process.argv);
   if (opts.color === false) c.setEnabled(false);
+  const collect = opts.demo ? demoAgents : collectAgents;
 
   if (opts.json) {
-    const agents = sortAgents(collectAgents(), opts.sort, opts.reverse);
+    const agents = sortAgents(collect(), opts.sort, opts.reverse);
     process.stdout.write(JSON.stringify(agents, null, 2) + '\n');
     return;
   }
 
   if (opts.once || !process.stdout.isTTY) {
-    const agents = sortAgents(collectAgents(), opts.sort, opts.reverse);
+    const agents = sortAgents(collect(), opts.sort, opts.reverse);
     const frame = buildFrame(agents, {
       width: process.stdout.columns || 100,
       height: Math.max(agents.length + 6, 10),
