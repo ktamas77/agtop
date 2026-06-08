@@ -42,6 +42,10 @@ Deno.test('pi.matchProcess accepts Pi shapes and rejects management or pi-go sha
     true,
   );
   assert.equal(pi.matchProcess('pi --no-session'), true);
+  assert.equal(pi.matchProcess('pi fix the failing test'), true);
+  // Bare `pi` with only numeric positionals is the GNU pi calculator, not the agent.
+  assert.equal(pi.matchProcess('pi 1000'), false);
+  assert.equal(pi.matchProcess('/usr/bin/pi 31415'), false);
   assert.equal(pi.matchProcess('/usr/bin/pi-go tui'), false);
   assert.equal(pi.matchProcess('pi-go'), false);
   assert.equal(pi.matchProcess('pi sessions list'), false);
