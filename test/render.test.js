@@ -85,13 +85,23 @@ test('buildFrame shows an empty-state message with zero agents', () => {
   assert.match(frame, /No running Claude agents/);
 });
 
-test('buildFrame every line fits within the terminal width', () => {
-  const frame = buildFrame(
-    [sample(), sample({ pid: 43, project: 'a-much-longer-project-name' })],
-    opts({ width: 80 }),
-  );
-  for (const line of frame.split('\n')) {
-    assert.ok(c.width(line) <= 80, `line exceeds width: "${line}"`);
+test('buildFrame every line fits within the terminal width (incl. header/empty)', () => {
+  // Cover narrow widths where the header, rows, footer, and empty-state can all
+  // overflow — regression guard for long hostnames on CI runners.
+  const cases = [
+    {
+      agents: [sample(), sample({ pid: 43, project: 'a-much-longer-project-name' })],
+      widths: [200, 80, 40, 20],
+    },
+    { agents: [], widths: [80, 30, 12] }, // empty-state lines must fit too
+  ];
+  for (const { agents, widths } of cases) {
+    for (const width of widths) {
+      const frame = buildFrame(agents, opts({ width, once: false }));
+      for (const line of frame.split('\n')) {
+        assert.ok(c.width(line) <= width, `width ${width} exceeded by: "${line}"`);
+      }
+    }
   }
 });
 
