@@ -70,7 +70,9 @@ interface Column {
   align: 'left' | 'right';
 }
 
-// Column layout. width 0 == flex (takes the remaining terminal width).
+// Column layout. The `width` here is the minimum/base; PROJECT, BRANCH, and
+// ACTIVITY are elastic (see resolveWidths) — width 0 marks ACTIVITY as the
+// remainder column.
 const COLUMNS: Column[] = [
   { key: 'pid', header: 'PID', width: 7, align: 'right' },
   { key: 'agent', header: 'AGENT', width: 8, align: 'left' },
@@ -84,6 +86,65 @@ const COLUMNS: Column[] = [
   { key: 'idle', header: 'IDLE', width: 6, align: 'right' },
   { key: 'activity', header: 'ACTIVITY', width: 0, align: 'left' },
 ];
+
+// PROJECT/BRANCH grow toward their widest cell when the terminal has spare room,
+// capped so one long value can't eat the row; ACTIVITY takes the remainder but
+// never drops below ACTIVITY_MIN. On a narrow terminal this collapses back to the
+// old fixed PROJECT 20 / BRANCH 12 layout.
+const PROJECT_MIN = 20;
+const PROJECT_MAX = 40;
+const BRANCH_MIN = 12;
+const BRANCH_MAX = 32;
+const ACTIVITY_MIN = 10;
+
+// The PROJECT cell shows a subagent's slug in place of the project name.
+function projectCellText(a: Agent): string {
+  return a.parentPid != null ? a.slug || '(subagent)' : a.project;
+}
+
+function branchCellText(a: Agent): string {
+  return a.gitBranch && a.gitBranch !== 'HEAD' ? a.gitBranch : a.gitBranch || '-';
+}
+
+// Resolve the per-column widths for this frame. Fixed columns keep their static
+// width; PROJECT/BRANCH expand to fit their content (bounded by their caps and by
+// keeping ACTIVITY >= ACTIVITY_MIN), and ACTIVITY absorbs whatever is left.
+function resolveWidths(agents: Agent[], width: number): Record<string, number> {
+  const widths: Record<string, number> = {};
+  let fixedSum = 0;
+  for (const col of COLUMNS) {
+    if (col.key === 'project' || col.key === 'branch' || col.key === 'activity') continue;
+    widths[col.key] = col.width;
+    fixedSum += col.width;
+  }
+  const gaps = COLUMNS.length - 1; // single space between columns
+  const budget = width - fixedSum - gaps; // shared by project + branch + activity
+
+  // Header label is the floor so the column title is never truncated.
+  const projContent = Math.max(7, ...agents.map((a) => c.width(projectCellText(a))));
+  const branchContent = Math.max(6, ...agents.map((a) => c.width(branchCellText(a))));
+  let project = Math.min(Math.max(projContent, PROJECT_MIN), PROJECT_MAX);
+  let branch = Math.min(Math.max(branchContent, BRANCH_MIN), BRANCH_MAX);
+
+  // If growing them left ACTIVITY too thin, trim back toward the mins (branch
+  // first, then project) until ACTIVITY has its minimum.
+  let activity = budget - project - branch;
+  if (activity < ACTIVITY_MIN) {
+    let deficit = ACTIVITY_MIN - activity;
+    const trimBranch = Math.min(deficit, branch - BRANCH_MIN);
+    branch -= trimBranch;
+    deficit -= trimBranch;
+    const trimProject = Math.min(deficit, project - PROJECT_MIN);
+    project -= trimProject;
+    deficit -= trimProject;
+    activity = budget - project - branch;
+  }
+
+  widths.project = project;
+  widths.branch = branch;
+  widths.activity = Math.max(ACTIVITY_MIN, activity);
+  return widths;
+}
 
 export interface FrameOpts {
   width?: number;
@@ -128,21 +189,17 @@ export function buildFrame(agents: Agent[], opts: FrameOpts): string {
   );
   lines.push('');
 
-  // ---- Resolve flex width for ACTIVITY ----
-  const fixed = COLUMNS.filter((col) => col.width > 0).reduce((s, col) => s + col.width, 0);
-  const gaps = COLUMNS.length - 1; // single space between columns
-  const flex = Math.max(10, width - fixed - gaps);
+  // ---- Resolve column widths (PROJECT/BRANCH grow to fit; ACTIVITY flexes) ----
+  const widths = resolveWidths(agents, width);
 
   // ---- Header row ----
-  const headerCells = COLUMNS.map((col) =>
-    fit(col.header, col.width === 0 ? flex : col.width, col.align)
-  );
+  const headerCells = COLUMNS.map((col) => fit(col.header, widths[col.key], col.align));
   lines.push(c.bold(c.inverse(fit(headerCells.join(' '), width))));
 
   // ---- Rows ----
   const bodyRows = Math.max(0, height - lines.length - 1); // leave 1 line for footer
   for (const a of agents.slice(0, bodyRows)) {
-    lines.push(fit(renderRow(a, flex), width));
+    lines.push(fit(renderRow(a, widths), width));
   }
 
   if (agents.length === 0) {
@@ -165,7 +222,7 @@ export function buildFrame(agents: Agent[], opts: FrameOpts): string {
   return lines.join('\n');
 }
 
-function renderRow(a: Agent, flex: number): string {
+function renderRow(a: Agent, widths: Record<string, number>): string {
   const st = STATE_STYLE[a.state] || STATE_STYLE.idle;
   const isSub = a.parentPid != null;
   const cells: Record<string, string> = {
@@ -174,8 +231,8 @@ function renderRow(a: Agent, flex: number): string {
     pid: isSub ? 'SUB' : String(a.pid),
     agent: isSub ? `↳${a.parentPid}` : a.agent || '-',
     model: shortModel(a.model),
-    project: isSub ? a.slug || '(subagent)' : a.project,
-    branch: a.gitBranch && a.gitBranch !== 'HEAD' ? a.gitBranch : a.gitBranch || '-',
+    project: projectCellText(a),
+    branch: branchCellText(a),
     state: `${st.dot} ${st.label}`,
     cpu: isSub ? '-' : (a.cpu || 0).toFixed(1),
     mem: isSub ? '-' : memFromKb(a.rssKb),
@@ -185,7 +242,7 @@ function renderRow(a: Agent, flex: number): string {
   };
 
   return COLUMNS.map((col) => {
-    const text = fit(cells[col.key], col.width === 0 ? flex : col.width, col.align);
+    const text = fit(cells[col.key], widths[col.key], col.align);
     return colorCell(col.key, text, a, st.color);
   }).join(' ');
 }
