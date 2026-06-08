@@ -9,6 +9,18 @@ const HIDE_CURSOR = '\x1b[?25l';
 const SHOW_CURSOR = '\x1b[?25h';
 const HOME = '\x1b[H';
 const CLEAR_BELOW = '\x1b[0J';
+const CLEAR_ALL = '\x1b[2J';
+
+// Compose the terminal write for one frame. In steady state a redraw is just
+// HOME + frame + clear-below. But on a size change (terminal resize) the previous
+// frame may have had more lines — and a mid-resize size query can briefly report
+// a taller terminal, so a frame can scroll the screen. A plain HOME redraw then
+// leaves stale rows behind (the stacked-footer mess), which persists even after
+// the size is restored. Prefix a full-screen clear whenever the size changed so
+// every resize starts from a blank screen.
+export function composeDraw(frame: string, resized: boolean): string {
+  return (resized ? CLEAR_ALL : '') + HOME + frame + CLEAR_BELOW;
+}
 
 const CTRL_C = String.fromCharCode(3);
 const ESC = String.fromCharCode(27);
@@ -29,6 +41,8 @@ export function runLive(opts: LiveOpts): void {
 
   let timer: ReturnType<typeof setInterval> | null = null;
   let stopped = false;
+  let lastCols = -1;
+  let lastRows = -1;
 
   function cleanup(): void {
     if (stopped) return;
@@ -41,6 +55,9 @@ export function runLive(opts: LiveOpts): void {
 
   function draw(): void {
     const { columns, rows } = platform.consoleSize();
+    const resized = columns !== lastCols || rows !== lastRows;
+    lastCols = columns;
+    lastRows = rows;
     const agents = sortAgents(collect(), state.sort, state.reverse);
     const frame = buildFrame(agents, {
       width: columns,
@@ -50,7 +67,7 @@ export function runLive(opts: LiveOpts): void {
       reverse: state.reverse,
       once: false,
     });
-    platform.write(HOME + frame + CLEAR_BELOW);
+    platform.write(composeDraw(frame, resized));
   }
 
   function reschedule(): void {
