@@ -4,6 +4,17 @@ All notable changes to **agentop** are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.7] — 2026-06-08
+
+### Changed
+
+- **PROJECT and BRANCH columns now grow to fit their content on wide terminals**
+  instead of staying fixed at 20/12 and truncating with an ellipsis. They expand
+  toward their widest cell (capped at 40/32 so one long value can't dominate the
+  row); ACTIVITY absorbs the remainder but keeps its minimum width, and a narrow
+  terminal collapses back to the previous fixed layout. Subagent slugs (shown in
+  the PROJECT column) are included in the measurement (#11).
+
 ## [0.5.6] — 2026-06-08
 
 ### Added
@@ -172,6 +183,7 @@ All notable changes to **agentop** are documented here. The format is based on
 - Initial release — a `top`-style live terminal dashboard for running Claude
   Code CLI agents. Zero runtime dependencies; macOS/Linux.
 
+[0.5.7]: https://github.com/ktamas77/agentop/releases/tag/v0.5.7
 [0.5.6]: https://github.com/ktamas77/agentop/releases/tag/v0.5.6
 [0.5.5]: https://github.com/ktamas77/agentop/releases/tag/v0.5.5
 [0.5.4]: https://github.com/ktamas77/agentop/releases/tag/v0.5.4
