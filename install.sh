@@ -60,9 +60,12 @@ choose_install_dir() {
 
 # --- sha256 verification (cross-platform) ----------------------------------
 verify_checksum() {
-  # args: <checksum-file> ; verifies the file it references in the cwd
-  if have sha256sum; then sha256sum -c "$1" >/dev/null 2>&1
-  elif have shasum; then shasum -a 256 -c "$1" >/dev/null 2>&1
+  # args: <checksum-file> ; verifies the file it references in the cwd.
+  # Suppress the per-file "OK" line on success, but let the tool's mismatch /
+  # missing-file message reach stderr so a failed verification is diagnosable
+  # (the caller's generic `die` message alone gives nothing to debug).
+  if have sha256sum; then sha256sum -c "$1" >/dev/null
+  elif have shasum; then shasum -a 256 -c "$1" >/dev/null
   else die "no sha256 tool found (need sha256sum or shasum)"; fi
 }
 
