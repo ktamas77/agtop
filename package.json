@@ -1,10 +1,12 @@
 {
   "name": "agentop",
   "version": "0.2.0",
-  "description": "top, but for your running Claude Code agents — a live terminal dashboard of every Claude CLI session on your machine.",
+  "description": "top, but for your running coding agents — a live terminal dashboard of every Claude Code and OpenAI Codex CLI session on your machine.",
   "keywords": [
     "claude",
     "claude-code",
+    "codex",
+    "openai-codex",
     "top",
     "htop",
     "monitor",
@@ -12,7 +14,8 @@
     "tui",
     "agents",
     "dashboard",
-    "anthropic"
+    "anthropic",
+    "openai"
   ],
   "homepage": "https://github.com/ktamas77/agentop#readme",
   "bugs": {
