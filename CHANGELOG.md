@@ -4,6 +4,19 @@ All notable changes to **agentop** are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and the project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.1] — 2026-06-08
+
+### Added
+
+- **Published to JSR** as `@ktamas77/agentop` — `deno run -A jsr:@ktamas77/agentop`.
+  Releases now publish to both npm and JSR (JSR via OIDC, no token).
+
+### Fixed
+
+- CI/publish: run `deno install` before `deno check`/`test`/`publish` so
+  `@types/node` resolves on a fresh checkout. Scope the JSR package to the
+  runtime source + docs.
+
 ## [0.5.0] — 2026-06-08
 
 ### Changed
@@ -13,10 +26,6 @@ All notable changes to **agentop** are documented here. The format is based on
   two runtime-specific seams (subprocess + terminal).
 - Dev toolchain moved to Deno (`deno fmt`/`lint`/`check`/`test`); `tsc` builds the
   npm `dist/` (now ships compiled `.js` + `.d.ts`). Dropped ESLint/Prettier.
-
-### Added
-
-- **Published to JSR** as `@ktamas77/agentop` — `deno run -A jsr:@ktamas77/agentop`.
 
 ## [0.4.0] — 2026-06-08
 
@@ -86,6 +95,7 @@ All notable changes to **agentop** are documented here. The format is based on
 - Initial release — a `top`-style live terminal dashboard for running Claude
   Code CLI agents. Zero runtime dependencies; macOS/Linux.
 
+[0.5.1]: https://github.com/ktamas77/agentop/releases/tag/v0.5.1
 [0.5.0]: https://github.com/ktamas77/agentop/releases/tag/v0.5.0
 [0.4.0]: https://github.com/ktamas77/agentop/releases/tag/v0.4.0
 [0.3.0]: https://github.com/ktamas77/agentop/releases/tag/v0.3.0
