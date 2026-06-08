@@ -34,5 +34,14 @@
     "dist",
     "node_modules",
     "docs"
-  ]
+  ],
+  "publish": {
+    "include": [
+      "main.ts",
+      "src",
+      "README.md",
+      "LICENSE",
+      "deno.json"
+    ]
+  }
 }
