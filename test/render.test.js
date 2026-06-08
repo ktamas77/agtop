@@ -77,10 +77,18 @@ test('buildFrame includes title, headers, and the agent row', () => {
   assert.match(frame, /Bash/);
 });
 
-test('buildFrame shows the codex agent and its model', () => {
-  const frame = buildFrame([sample({ agent: 'codex', model: 'gpt-5.5', project: 'web' })], opts());
+test('buildFrame shows codex and grok agents with their models', () => {
+  const frame = buildFrame(
+    [
+      sample({ agent: 'codex', model: 'gpt-5.5', project: 'web' }),
+      sample({ pid: 43, agent: 'grok', model: 'grok-4', project: 'infra' }),
+    ],
+    opts(),
+  );
   assert.match(frame, /codex/);
   assert.match(frame, /gpt-5\.5/);
+  assert.match(frame, /grok/);
+  assert.match(frame, /grok-4/);
 });
 
 test('buildFrame pluralizes the agent count', () => {

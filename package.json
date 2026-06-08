@@ -1,12 +1,15 @@
 {
   "name": "agentop",
   "version": "0.2.2",
-  "description": "top, but for your running coding agents — a live terminal dashboard of every Claude Code and OpenAI Codex CLI session on your machine.",
+  "description": "top, but for your running coding agents — a live terminal dashboard of every Claude Code, OpenAI Codex, and xAI Grok CLI session on your machine.",
   "keywords": [
     "claude",
     "claude-code",
     "codex",
     "openai-codex",
+    "grok",
+    "grok-cli",
+    "xai",
     "top",
     "htop",
     "monitor",

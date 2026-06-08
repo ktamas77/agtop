@@ -8,6 +8,7 @@ const path = require('node:path');
 const { readTailObjects, readHeadObjects } = require('../lib/jsonl');
 const claude = require('../lib/providers/claude');
 const codex = require('../lib/providers/codex');
+const grok = require('../lib/providers/grok');
 
 // ---- shared jsonl helpers ----
 
@@ -149,4 +150,120 @@ test('codex.summarizeTail: apply_patch and task_complete', () => {
   ]);
   assert.equal(complete.rawState, 'replied');
   assert.equal(complete.detail, 'shipped it');
+});
+
+test('codex.summarizeTail is safe on empty input', () => {
+  const s = codex.summarizeTail([]);
+  assert.equal(s.model, null);
+  assert.equal(s.rawState, 'unknown');
+  assert.equal(s.lastTs, null);
+});
+
+// ---- grok provider ----
+
+test('grok.matchProcess matches the grok CLI only', () => {
+  assert.equal(grok.matchProcess('grok'), true);
+  assert.equal(grok.matchProcess('/Users/me/.grok/bin/grok'), true);
+  assert.equal(grok.matchProcess('grok --yolo'), true);
+  assert.equal(grok.matchProcess('claude'), false);
+  assert.equal(grok.matchProcess('codex'), false);
+  assert.equal(grok.matchProcess('node server.js'), false);
+  assert.equal(grok.matchProcess(''), false);
+});
+
+test('grok.summarizeEvents: turn_ended -> replied', () => {
+  const s = grok.summarizeEvents([
+    { type: 'phase_changed', phase: 'streaming_text' },
+    { type: 'turn_ended', outcome: 'completed' },
+  ]);
+  assert.equal(s.rawState, 'replied');
+});
+
+test('grok.summarizeEvents: running tool -> working with friendly label', () => {
+  const s = grok.summarizeEvents([
+    { type: 'tool_started', tool_name: 'run_terminal_command' },
+    { type: 'phase_changed', phase: 'tool_execution' },
+  ]);
+  assert.equal(s.rawState, 'tool');
+  assert.equal(s.detail, 'Shell');
+});
+
+test('grok.summarizeEvents: completed tool clears the running tool', () => {
+  const s = grok.summarizeEvents([
+    { type: 'tool_started', tool_name: 'run_terminal_command' },
+    { type: 'tool_completed' },
+    { type: 'phase_changed', phase: 'streaming_reasoning' },
+  ]);
+  assert.equal(s.rawState, 'thinking');
+});
+
+test('grok.summarizeEvents: permission prompt and streaming/empty', () => {
+  assert.equal(
+    grok.summarizeEvents([{ type: 'phase_changed', phase: 'permission_prompt' }]).detail,
+    'awaiting approval',
+  );
+  assert.equal(
+    grok.summarizeEvents([{ type: 'phase_changed', phase: 'waiting_for_model' }]).rawState,
+    'thinking',
+  );
+  assert.equal(grok.summarizeEvents([]).rawState, 'unknown');
+});
+
+test('grok.summarizeSession reads summary.json + events.jsonl from a session dir', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentop-grok-'));
+  try {
+    fs.writeFileSync(
+      path.join(dir, 'summary.json'),
+      JSON.stringify({
+        info: { id: 'sess-1', cwd: '/tmp/x' },
+        current_model_id: 'grok-4',
+        updated_at: '2026-06-08T00:00:05.000Z',
+        session_summary: 'Analyze the repo',
+      }),
+    );
+    fs.writeFileSync(
+      path.join(dir, 'events.jsonl'),
+      [
+        JSON.stringify({
+          ts: '2026-06-08T00:00:04.000Z',
+          type: 'tool_started',
+          tool_name: 'read_file',
+        }),
+        JSON.stringify({
+          ts: '2026-06-08T00:00:05.000Z',
+          type: 'phase_changed',
+          phase: 'tool_execution',
+        }),
+      ].join('\n') + '\n',
+    );
+    const s = grok.summarizeSession(dir);
+    assert.equal(s.model, 'grok-4');
+    assert.equal(s.sessionId, 'sess-1');
+    assert.equal(s.lastPrompt, 'Analyze the repo');
+    assert.equal(s.lastTs, Date.parse('2026-06-08T00:00:05.000Z'));
+    assert.equal(s.rawState, 'tool');
+    assert.equal(s.detail, 'Read');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('grok.summarizeSession falls back to last event ts when summary lacks updated_at', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentop-grok-'));
+  try {
+    fs.writeFileSync(
+      path.join(dir, 'summary.json'),
+      JSON.stringify({ current_model_id: 'grok-code' }),
+    );
+    fs.writeFileSync(
+      path.join(dir, 'events.jsonl'),
+      JSON.stringify({ ts: '2026-06-08T01:00:00.000Z', type: 'turn_ended' }) + '\n',
+    );
+    const s = grok.summarizeSession(dir);
+    assert.equal(s.model, 'grok-code');
+    assert.equal(s.lastTs, Date.parse('2026-06-08T01:00:00.000Z'));
+    assert.equal(s.rawState, 'replied');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
