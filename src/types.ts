@@ -4,7 +4,15 @@
 export type Rec = Record<string, any>;
 
 /** The agent frameworks agentop knows how to detect. */
-export type Framework = 'claude' | 'codex' | 'grok' | 'gemini' | 'agy';
+export type Framework =
+  | 'claude'
+  | 'codex'
+  | 'grok'
+  | 'gemini'
+  | 'agy'
+  | 'pi'
+  | 'hermes'
+  | 'opencode';
 
 /** What a provider reports an agent is doing, before it's aged into a display state. */
 export type RawState = 'tool' | 'thinking' | 'replied' | 'unknown' | 'no-session' | string;

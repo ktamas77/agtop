@@ -52,7 +52,7 @@ interface Column {
 // Column layout. width 0 == flex (takes the remaining terminal width).
 const COLUMNS: Column[] = [
   { key: 'pid', header: 'PID', width: 7, align: 'right' },
-  { key: 'agent', header: 'AGENT', width: 7, align: 'left' },
+  { key: 'agent', header: 'AGENT', width: 8, align: 'left' },
   { key: 'model', header: 'MODEL', width: 16, align: 'left' },
   { key: 'project', header: 'PROJECT', width: 20, align: 'left' },
   { key: 'branch', header: 'BRANCH', width: 12, align: 'left' },
@@ -122,9 +122,7 @@ export function buildFrame(agents: Agent[], opts: FrameOpts): string {
   if (agents.length === 0) {
     lines.push('');
     lines.push(fit(c.dim('  No running agents found.'), width));
-    lines.push(
-      fit(c.dim('  Start one with `claude` or `codex` in a project, then come back.'), width),
-    );
+    lines.push(fit(c.dim('  Start a supported agent in a project, then come back.'), width));
   }
 
   // ---- Footer ----

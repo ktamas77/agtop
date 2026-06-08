@@ -3,17 +3,19 @@ import { demoAgents } from '../src/demo.ts';
 
 Deno.test('demoAgents returns well-formed records covering all frameworks', () => {
   const agents = demoAgents(1_700_000_000_000);
-  assert.ok(agents.length >= 5);
+  assert.ok(agents.length >= 8);
   const kinds = new Set<string>();
   for (const a of agents) {
     assert.equal(typeof a.pid, 'number');
     assert.equal(typeof a.model, 'string');
     assert.ok(a.cpu >= 0);
     assert.ok('state' in a && 'rawState' in a && 'idleSec' in a);
-    assert.ok(['claude', 'codex', 'grok', 'gemini', 'agy'].includes(a.agent));
+    assert.ok(
+      ['claude', 'codex', 'grok', 'gemini', 'agy', 'pi', 'hermes', 'opencode'].includes(a.agent),
+    );
     kinds.add(a.agent);
   }
-  for (const k of ['claude', 'codex', 'grok', 'gemini', 'agy']) {
+  for (const k of ['claude', 'codex', 'grok', 'gemini', 'agy', 'pi', 'hermes', 'opencode']) {
     assert.ok(kinds.has(k), `missing ${k}`);
   }
 });

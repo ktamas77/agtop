@@ -4,14 +4,15 @@
 [![CI](https://github.com/ktamas77/agentop/actions/workflows/ci.yml/badge.svg)](https://github.com/ktamas77/agentop/actions/workflows/ci.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-> `top`, but for your running **coding agents** — Claude Code, Codex, Grok, Gemini, and Antigravity.
+> `top`, but for your running **coding agents** — Claude Code, Codex, Grok, Gemini, Antigravity, Pi, Hermes, and OpenCode.
 
 A zero-dependency terminal dashboard that shows every `claude` (Claude Code),
-`codex` (OpenAI Codex), `grok` (xAI Grok), `gemini` (Google Gemini), and `agy`
-(Google Antigravity) CLI session running on your machine — live, refreshing like
-`top`/`htop`. See at a glance which projects have agents working, what framework
-and model they're on, which git branch they're on, and what each one is doing
-*right now* (running a tool, thinking, or waiting for you).
+`codex` (OpenAI Codex), `grok` (xAI Grok), `gemini` (Google Gemini), `agy`
+(Google Antigravity), `pi` (Earendil Pi), `hermes` (Hermes Agent), and
+`opencode` CLI session running on your machine — live, refreshing like
+`top`/`htop`. See at a glance which projects have agents working, what
+framework and model they're on, which git branch they're on, and what each one
+is doing *right now* (running a tool, thinking, or waiting for you).
 
 ![agentop in action](https://raw.githubusercontent.com/ktamas77/agentop/main/docs/demo.gif)
 
@@ -85,7 +86,7 @@ watch -n5 'agentop --once'
 | Column | Meaning |
 |--------|---------|
 | **PID** | OS process id of the agent's CLI session |
-| **AGENT** | Which framework — `claude`, `codex`, `grok`, `gemini`, or `agy` |
+| **AGENT** | Which framework — `claude`, `codex`, `grok`, `gemini`, `agy`, `pi`, `hermes`, or `opencode` |
 | **MODEL** | Model the session is using (e.g. `opus-4-8`, `gpt-5.5`, `grok-4`, `gemini-3-flash`) |
 | **PROJECT** | Working directory basename of the agent |
 | **BRANCH** | Git branch the session is on |
@@ -100,10 +101,11 @@ watch -n5 'agentop --once'
 
 `agentop` reads only local state — nothing is sent anywhere:
 
-1. It lists running **`claude`, `codex`, `grok`, `gemini`, and `agy` CLI
-   processes** with `ps` (desktop apps, helpers, and launcher shims are filtered
-   out), and resolves each one's working directory via `/proc` on Linux or
-   `lsof` on macOS.
+1. It lists running **`claude`, `codex`, `grok`, `gemini`, `agy`, `pi`,
+   `hermes`, and `opencode` processes** with `ps` (desktop apps, helpers,
+   servers, management commands, and launcher shims are filtered out), and
+   resolves each one's working directory via `/proc` on Linux or `lsof` on
+   macOS.
 2. It joins each process to its **session** by working directory:
    - **Claude Code** → the transcript under
      `~/.claude/projects/<encoded-cwd>/<session>.jsonl` (reads just the tail).
@@ -116,6 +118,13 @@ watch -n5 'agentop --once'
    - **Antigravity** → the readable transcript in
      `~/.gemini/antigravity-cli/brain/<id>/…/transcript.jsonl`, matched to the
      workspace it references.
+   - **Pi** → JSONL sessions under `~/.pi/agent/sessions/` or configured Pi
+     session directories. GSD-style Pi custom entries stay represented as Pi
+     row detail; no separate `gsd-pi` provider ships unless a future distinct
+     local state gap requires it.
+   - **Hermes Agent** → `~/.hermes/state.db` or `$HERMES_HOME/state.db`.
+   - **OpenCode** → `OPENCODE_DB` or local OpenCode DB files under
+     `~/.local/share/opencode/`, matched to the process cwd.
 3. From each it extracts the model, git branch, version, last-activity time, and
    the current tool call, and renders it all as a `top`-style table.
 
@@ -127,8 +136,9 @@ another agent framework is mostly one new file.
 - Runs on **Node.js ≥ 18** or **Deno ≥ 2** — the same TypeScript source runs on
   both (a tiny `src/platform.ts` abstracts the runtime).
 - macOS or Linux (`ps`, plus `lsof` on macOS)
-- `sqlite3` (a standard system binary) is used for Codex live enrichment; if it's
-  missing, Codex agents still show — just without live model/activity.
+- `sqlite3` (a standard system binary) is used for Codex, Hermes, and OpenCode
+  live enrichment; if it's missing, those agents still show — just without live
+  model/activity from their local databases.
 
 ## Changelog
 
@@ -154,6 +164,13 @@ framework). Entry points: `bin/agentop.js` (npm, over the built `dist/`) and
 `main.ts` (Deno). A Husky **pre-commit** hook runs the same `deno fmt/lint/check/
 test` + `tsc` build; CI runs a Deno matrix and a Node build/smoke matrix across
 macOS/Linux.
+
+### Adding providers
+
+New provider support must preserve Agentop's zero-dependency, local-only model:
+read process/session state from local files or host tools, fail soft when a
+store is missing or malformed, bound scans, sanitize provider-derived text, and
+prove TUI/`--once`/`--json` parity with fixtures before claiming support.
 
 ## License
 

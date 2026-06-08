@@ -8,4 +8,6 @@ npm-debug.log*
 coverage/
 .playwright-mcp/
 npm-login.png
+.planning/
+.omx/
 deno.lock
