@@ -57,6 +57,10 @@ export interface PartialAgent {
   lastTs: number | null;
   rawState: RawState;
   detail: string;
+  /** Parent process PID when this row is a subagent (Task tool); null/absent for real processes. */
+  parentPid?: number | null;
+  /** Subagent label, e.g. "review:bug-scan"; only set on subagent rows. */
+  slug?: string | null;
 }
 
 /** A fully-resolved agent row, ready to render. */

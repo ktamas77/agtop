@@ -120,7 +120,7 @@ const CYCLE: Phase[] = [
 // deterministic output (tests); omit for a live, animated view.
 export function demoAgents(nowMs: number = Date.now()): Agent[] {
   const tick = Math.floor(nowMs / 1000);
-  return FIXTURES.map((f, i) => {
+  const agents: Agent[] = FIXTURES.map((f, i) => {
     const phase = CYCLE[(tick + i * 2) % CYCLE.length];
     const cpuJitter = phase.state === 'idle' || phase.state === 'waiting'
       ? 0
@@ -146,4 +146,32 @@ export function demoAgents(nowMs: number = Date.now()): Agent[] {
       state: phase.state,
     };
   });
+
+  // A live Task-tool subagent under the claude fixture (pid 50121), to preview
+  // the SUB / ↳parent row style. sortAgents pins it beneath its parent.
+  const sub = CYCLE[(tick + 1) % CYCLE.length];
+  agents.push({
+    pid: 50121,
+    parentPid: 50121,
+    slug: 'review:bug-scan',
+    agent: 'claude',
+    cpu: 0,
+    rssKb: 0,
+    uptimeSec: 0,
+    cwd: '/Users/dev/api-gateway',
+    project: 'api-gateway',
+    args: 'claude',
+    model: 'claude-haiku-4-5',
+    version: '2.1.168',
+    gitBranch: 'main',
+    sessionId: 'demo-session',
+    lastPrompt: null,
+    lastTs: null,
+    rawState: sub.rawState,
+    detail: sub.detail,
+    idleSec: sub.idleSec,
+    state: sub.state,
+  });
+
+  return agents;
 }

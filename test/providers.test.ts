@@ -80,6 +80,77 @@ Deno.test('claude.summarize derives tool/replied state and empty input', () => {
   assert.equal(claude.summarize([]).rawState, 'unknown');
 });
 
+Deno.test('claude.summarize captures the subagent slug', () => {
+  const s = claude.summarize([
+    { slug: 'review:bug-scan', type: 'user', message: { content: 'go' } },
+    { type: 'assistant', message: { model: 'claude-haiku-4-5', content: [] } },
+  ]);
+  assert.equal(s.slug, 'review:bug-scan');
+  assert.equal(claude.summarize([]).slug, null);
+});
+
+Deno.test('claude.collectSubagents emits live subagents and skips stale ones', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'agentop-sub-'));
+  const sid = 'sess-1';
+  const sessionFile = path.join(root, `${sid}.jsonl`);
+  const subDir = path.join(root, sid, 'subagents');
+  try {
+    fs.writeFileSync(sessionFile, JSON.stringify({ cwd: '/proj', type: 'user' }) + '\n');
+    fs.mkdirSync(subDir, { recursive: true });
+    const mkSub = (fname: string, slug: string, tool: string) =>
+      fs.writeFileSync(
+        path.join(subDir, fname),
+        JSON.stringify({
+          slug,
+          cwd: '/proj',
+          gitBranch: 'main',
+          type: 'assistant',
+          timestamp: '2026-06-08T00:00:00.000Z',
+          message: { model: 'claude-haiku-4-5', content: [{ type: 'tool_use', name: tool }] },
+        }) + '\n',
+      );
+    mkSub('agent-a.jsonl', 'review:bug-scan', 'Grep');
+    mkSub('agent-b.jsonl', 'review:perf', 'Read');
+    // Age agent-b well past the live window so it is filtered out.
+    const old = new Date(Date.now() - 10 * 60 * 1000);
+    fs.utimesSync(path.join(subDir, 'agent-b.jsonl'), old, old);
+
+    const parent = {
+      agent: 'claude' as const,
+      pid: 4242,
+      cpu: 12,
+      rssKb: 1,
+      uptimeSec: 1,
+      cwd: '/proj',
+      project: 'proj',
+      args: 'claude',
+      model: null,
+      version: null,
+      gitBranch: 'main',
+      sessionId: sid,
+      lastPrompt: null,
+      lastTs: null,
+      rawState: 'tool',
+      detail: '',
+    };
+    const subs = claude.collectSubagents(parent, sessionFile, Date.now());
+    assert.equal(subs.length, 1);
+    assert.equal(subs[0].parentPid, 4242);
+    assert.equal(subs[0].pid, 4242);
+    assert.equal(subs[0].slug, 'review:bug-scan');
+    assert.equal(subs[0].model, 'claude-haiku-4-5');
+    assert.equal(subs[0].rawState, 'tool');
+    assert.equal(subs[0].detail, 'Grep');
+    // No subagents dir → empty, not a throw.
+    assert.deepEqual(
+      claude.collectSubagents({ ...parent, sessionId: 'nope' }, sessionFile, Date.now()),
+      [],
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 // ---- codex ----
 
 Deno.test('codex.matchProcess + summarizeTail (model, tool label, reply, empty)', () => {
