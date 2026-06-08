@@ -47,3 +47,21 @@ jobs:
       - run: npm run build
       - run: node bin/agentop.js --version
       - run: node bin/agentop.js --demo --once --no-color
+
+  # Bun: install + build + smoke-test the compiled binary (Bun runs the Node path).
+  bun-build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install
+      - run: bun run build
+      - run: bun bin/agentop.js --version
+      - run: bun bin/agentop.js --demo --once --no-color
+      - run: bun bin/agentop.js --json
