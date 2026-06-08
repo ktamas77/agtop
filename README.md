@@ -1,5 +1,9 @@
 # agtop
 
+[![npm version](https://img.shields.io/npm/v/agtop.svg)](https://www.npmjs.com/package/agtop)
+[![CI](https://github.com/ktamas77/agtop/actions/workflows/ci.yml/badge.svg)](https://github.com/ktamas77/agtop/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 > `top`, but for your running **Claude Code agents**.
 
 A zero-dependency terminal dashboard that shows every `claude` CLI session
