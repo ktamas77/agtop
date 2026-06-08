@@ -65,6 +65,12 @@ just the dependency-free option.
 > `xattr -d com.apple.quarantine ./agentop` once. Each binary is ~137 MB — it embeds the
 > Deno runtime, which is what makes it dependency-free.
 
+…or with [Bun](https://bun.sh) (runs the npm package directly):
+
+```sh
+bunx agentop
+```
+
 Want to see it without any agents running? Try the demo:
 
 ```sh
@@ -145,8 +151,9 @@ another agent framework is mostly one new file.
 
 ## Requirements
 
-- Runs on **Node.js ≥ 18** or **Deno ≥ 2** — the same TypeScript source runs on
-  both (a tiny `src/platform.ts` abstracts the runtime).
+- Runs on **Node.js ≥ 18**, **Deno ≥ 2**, or **Bun ≥ 1** — the same TypeScript
+  source runs on all three (a tiny `src/platform.ts` abstracts the runtime; Bun
+  uses the Node path).
 - macOS or Linux (`ps`, plus `lsof` on macOS)
 - `sqlite3` (a standard system binary) is used for Codex live enrichment; if it's
   missing, Codex agents still show — just without live model/activity.
